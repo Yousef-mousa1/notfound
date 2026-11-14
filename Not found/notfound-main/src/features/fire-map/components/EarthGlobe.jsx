@@ -8,14 +8,25 @@ import "../../fire-map/styles/globe.css";
 
 const INITIAL_CAMERA_POSITION = [0, 0, 3.5];
 
-export default function EarthGlobe({ onLocationSelect }) {
+export default function EarthGlobe({ onLocationSelect, markers = [] }) {
   const containerRef = useRef(null);
   const controlsRef = useRef(null);
   const cameraRef = useRef(null);
+  const earthRef = useRef(null);
   const onLocationSelectRef = useRef(onLocationSelect);
   const selectedMarkerRef = useRef(null);
 
-  const [isAutoRotating, setIsAutoRotating] = useState(true);
+  // Rotation is derived: it spins only while there is nothing to look at,
+  // unless the user explicitly toggles it (null = automatic).
+  const [rotationOverride, setRotationOverride] = useState(null);
+  const isAutoRotating = rotationOverride ?? markers.length === 0;
+  const rotationRef = useRef(isAutoRotating);
+  const fittedRef = useRef(false);
+
+  useEffect(() => {
+    rotationRef.current = isAutoRotating;
+    if (controlsRef.current) controlsRef.current.autoRotate = isAutoRotating;
+  }, [isAutoRotating]);
 
   // Keep the latest callback without recreating the Three.js scene.
   useEffect(() => {
@@ -77,13 +88,6 @@ export default function EarthGlobe({ onLocationSelect }) {
     directionalLight.position.set(5, 3, 5);
     scene.add(directionalLight);
 
-    // Earth Texture
-    const textureLoader = new THREE.TextureLoader();
-
-    const earthTexture = textureLoader.load(
-      "https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg"
-    );
-
     // Earth Mesh
     const earthGeometry = new THREE.SphereGeometry(
       1,
@@ -91,10 +95,30 @@ export default function EarthGlobe({ onLocationSelect }) {
       64
     );
 
+    // Earth Texture. The image ships with the app (public/textures) so the
+    // globe renders the same on any network; if it still fails the material
+    // falls back to a solid ocean-blue instead of staying black.
+    const textureLoader = new THREE.TextureLoader();
+
     const earthMaterial = new THREE.MeshPhongMaterial({
-      map: earthTexture,
+      color: 0x1e3a8a,
       shininess: 10,
     });
+
+    const earthTexture = textureLoader.load(
+      `${import.meta.env.BASE_URL}textures/earth_atmos_2048.jpg`,
+      (texture) => {
+        texture.colorSpace = THREE.SRGBColorSpace;
+        earthMaterial.map = texture;
+        earthMaterial.color.set(0xffffff);
+        earthMaterial.needsUpdate = true;
+      },
+      undefined,
+      () => {
+        earthMaterial.map = null;
+        earthMaterial.needsUpdate = true;
+      }
+    );
 
     const earth = new THREE.Mesh(
       earthGeometry,
@@ -102,6 +126,7 @@ export default function EarthGlobe({ onLocationSelect }) {
     );
 
     scene.add(earth);
+    earthRef.current = earth;
 
     // Selected Location Marker
     const clearSelectedMarker = () => {
@@ -420,6 +445,93 @@ export default function EarthGlobe({ onLocationSelect }) {
     };
   }, []);
 
+  // Fire layers: one Points object per kind so colours stay independent.
+  useEffect(() => {
+    const earth = earthRef.current;
+
+    if (!earth) return;
+
+    const layers = [];
+    const groups = { modis: [], viirs: [], anomaly: [], harmonized: [] };
+
+    markers.forEach((marker) => {
+      if (!marker || !Number.isFinite(marker.lat) || !Number.isFinite(marker.lon)) return;
+      const bucket = groups[marker.kind];
+      if (bucket) bucket.push(marker);
+    });
+
+    const addPoints = (list, color, size, radius) => {
+      if (!list.length) return;
+
+      const positions = new Float32Array(list.length * 3);
+
+      list.forEach((marker, index) => {
+        const phi = THREE.MathUtils.degToRad(marker.lat);
+        const lambda = THREE.MathUtils.degToRad(marker.lon);
+
+        positions[index * 3] = radius * Math.cos(phi) * Math.cos(lambda);
+        positions[index * 3 + 1] = radius * Math.sin(phi);
+        positions[index * 3 + 2] = -radius * Math.cos(phi) * Math.sin(lambda);
+      });
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+
+      const material = new THREE.PointsMaterial({
+        color,
+        size,
+        sizeAttenuation: true,
+        transparent: true,
+        opacity: 0.9,
+        depthWrite: false,
+      });
+
+      const points = new THREE.Points(geometry, material);
+      points.frustumCulled = false;
+      earth.add(points);
+      layers.push({ points, geometry, material });
+    };
+
+    addPoints(groups.modis, 0xff7a1a, 0.009, 1.004);
+    addPoints(groups.viirs, 0xffd23f, 0.009, 1.004);
+    addPoints(groups.anomaly, 0xff2d2d, 0.014, 1.012);
+    // Harmonized cell-days sit just above the globe so they stay visible
+    // next to the detections that fall inside the same cell.
+    addPoints(groups.harmonized, 0xa855f7, 0.02, 1.02);
+
+    // Aim the camera at the data instead of the prime meridian, otherwise a
+    // small regional cluster (e.g. one country) is a few invisible pixels.
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+    if (camera && controls && markers.length && !fittedRef.current) {
+      fittedRef.current = true;
+      const center = new THREE.Vector3();
+      markers.forEach((marker) => {
+        const phi = THREE.MathUtils.degToRad(marker.lat);
+        const lambda = THREE.MathUtils.degToRad(marker.lon);
+        center.x += Math.cos(phi) * Math.cos(lambda);
+        center.y += Math.sin(phi);
+        center.z += -Math.cos(phi) * Math.sin(lambda);
+      });
+      if (center.length() > 0.0001) {
+        const direction = center.normalize();
+        const distance = 2.45;
+        camera.position.copy(direction.clone().multiplyScalar(distance));
+        controls.target.set(0, 0, 0);
+        controls.autoRotate = rotationRef.current;
+        controls.update();
+      }
+    }
+
+    return () => {
+      layers.forEach(({ points, geometry, material }) => {
+        earth.remove(points);
+        geometry.dispose();
+        material.dispose();
+      });
+    };
+  }, [markers]);
+
   // Zoom In
   const handleZoomIn = () => {
     const camera = cameraRef.current;
@@ -475,14 +587,35 @@ export default function EarthGlobe({ onLocationSelect }) {
     // Clear selected location in parent component
     onLocationSelectRef.current?.(null);
 
-    // Reset camera
-    camera.position.set(...INITIAL_CAMERA_POSITION);
+    // Reset camera: back to the data cluster, or to the default view when the
+    // store has no points yet.
+    const points = markers.filter(
+      (marker) => Number.isFinite(marker?.lat) && Number.isFinite(marker?.lon)
+    );
+
+    if (points.length) {
+      const center = new THREE.Vector3();
+      points.forEach((marker) => {
+        const phi = THREE.MathUtils.degToRad(marker.lat);
+        const lambda = THREE.MathUtils.degToRad(marker.lon);
+        center.x += Math.cos(phi) * Math.cos(lambda);
+        center.y += Math.sin(phi);
+        center.z += -Math.cos(phi) * Math.sin(lambda);
+      });
+      if (center.length() > 0.0001) {
+        camera.position.copy(center.normalize().multiplyScalar(2.45));
+      } else {
+        camera.position.set(...INITIAL_CAMERA_POSITION);
+      }
+    } else {
+      camera.position.set(...INITIAL_CAMERA_POSITION);
+    }
 
     controls.target.set(0, 0, 0);
-    controls.autoRotate = true;
+    controls.autoRotate = false;
     controls.update();
 
-    setIsAutoRotating(true);
+    setRotationOverride(null);
   };
 
   // Toggle Auto Rotation
@@ -491,10 +624,8 @@ export default function EarthGlobe({ onLocationSelect }) {
 
     if (!controls) return;
 
-    const nextState = !isAutoRotating;
-
-    controls.autoRotate = nextState;
-    setIsAutoRotating(nextState);
+    controls.autoRotate = !isAutoRotating;
+    setRotationOverride(!isAutoRotating);
   };
 
   return (

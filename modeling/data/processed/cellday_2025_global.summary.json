@@ -1,0 +1,46 @@
+{
+  "year": 2025,
+  "modis": {
+    "file": "MODIS_2025_global.csv",
+    "sensor": "modis",
+    "rows_raw": 131653,
+    "rows_clean": 124336,
+    "steps": {
+      "drop_non_vegetation": 7316,
+      "drop_invalid_coordinates": 0,
+      "drop_invalid_timestamp": 0,
+      "drop_exact_duplicates": 0,
+      "drop_invalid_frp": 1
+    },
+    "confidence_distribution": {
+      "nominal": 85748,
+      "high": 32073,
+      "low": 6515
+    },
+    "frp_median_mw": 18.3
+  },
+  "viirs": {
+    "file": "VIIRS_SNPP_2025_global.csv",
+    "sensor": "viirs",
+    "rows_raw": 129762,
+    "rows_clean": 119420,
+    "steps": {
+      "drop_non_vegetation": 10342,
+      "drop_invalid_coordinates": 0,
+      "drop_invalid_timestamp": 0,
+      "drop_exact_duplicates": 0,
+      "drop_invalid_frp": 0
+    },
+    "confidence_distribution": {
+      "nominal": 97402,
+      "low": 14840,
+      "high": 7178
+    },
+    "frp_median_mw": 5.34
+  },
+  "cell_days_modis": 119846,
+  "cell_days_viirs": 115674,
+  "cell_days_joined": 119846,
+  "viirs_only_cell_days_excluded": 110792,
+  "positive_rate": 0.04073561070039885
+}

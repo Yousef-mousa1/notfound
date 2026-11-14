@@ -1,0 +1,11 @@
+{
+  "presence_threshold": 0.30882074665368964,
+  "precision_ge_0_8_threshold": 0.7298219453688992,
+  "presence_model": "hist_gradient_boosting__none",
+  "count_model": "xgboost__none",
+  "frp_model": "lightgbm log1p",
+  "grid_degrees": 1.0,
+  "trained_on": [
+    "data/processed/cellday_2025_global_1deg.parquet"
+  ]
+}

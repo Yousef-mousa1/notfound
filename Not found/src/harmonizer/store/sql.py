@@ -770,3 +770,61 @@ def export_list(
         [*params, limit, offset],
         params,
     )
+
+
+def harmonized_map_points(
+    run_id: str,
+    grid_id: str,
+    both_only: bool,
+    limit: int,
+    offset: int = 0,
+) -> tuple[str, list[Any]]:
+    """Map points for a run's per-cell results, with grid cell centres.
+
+    A harmonized row is a cell-day, not a detection, so the geometry comes from
+    the run's grid. Ordering is by the harmonized index so a bounded sample
+    keeps the strongest cells instead of an arbitrary slice.
+    """
+    where = ["r.run_id = ?", "c.grid_id = ?"]
+    params: list[Any] = [run_id, grid_id]
+    if both_only:
+        where.append("r.sensors_present = 2")
+    return (
+        """
+        SELECT
+            r.cell_id,
+            r.time_bucket AS day,
+            r.sensors_present,
+            r.modis_count,
+            r.viirs_count,
+            r.modis_mean_frp_mw,
+            r.viirs_mean_frp_mw,
+            r.viirs_mean_frp_calibrated_mw,
+            r.harmonized_activity_index,
+            r.uncertainty_mw,
+            c.center_lat,
+            c.center_lon
+        FROM harmonization_results r
+        JOIN grid_cells c ON c.grid_id = ? AND c.cell_id = r.cell_id
+        WHERE """ + " AND ".join(where) + """
+        ORDER BY r.harmonized_activity_index DESC NULLS LAST, r.cell_id, r.time_bucket
+        LIMIT ? OFFSET ?
+        """,
+        [grid_id, *params, limit, offset],
+    )
+
+
+def harmonized_map_point_count(
+    run_id: str, grid_id: str, both_only: bool
+) -> tuple[str, list[Any]]:
+    """Number of map points matching ``harmonized_map_points`` filters."""
+    where = ["r.run_id = ?", "c.grid_id = ?"]
+    params: list[Any] = [run_id, grid_id]
+    if both_only:
+        where.append("r.sensors_present = 2")
+    return (
+        "SELECT count(*) FROM harmonization_results r "
+        "JOIN grid_cells c ON c.grid_id = ? AND c.cell_id = r.cell_id "
+        "WHERE " + " AND ".join(where),
+        [grid_id, *params],
+    )
