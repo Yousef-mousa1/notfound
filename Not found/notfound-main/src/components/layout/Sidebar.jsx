@@ -46,7 +46,7 @@ export default function Sidebar() {
 
         <div>
           <h1 className="text-lg font-bold tracking-tight">
-            FireScope
+            PyroScope
           </h1>
 
           <p className="text-xs text-(--text-secondary)">

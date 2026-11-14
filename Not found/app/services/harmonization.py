@@ -446,3 +446,52 @@ def activity_index(
             "No FRP is summed across sensors and no energy is derived.",
         ],
     }
+
+
+def map_cells(
+    database: Database,
+    run_id: str | None,
+    both_only: bool,
+    limit: int,
+    offset: int = 0,
+) -> dict[str, Any]:
+    """Return a run's cell-day results as map points, with grid cell centres.
+
+    Each point is a 25 km cell-day, not a detection: the coordinates are the
+    grid cell centre and several points can share the same cell on different
+    days.
+    """
+    run_row = _resolve_run(database, run_id)
+    params = run_row.get("params") or {}
+    grid_id = params.get("grid_id")
+    if not grid_id:
+        raise ApiError(
+            "no_grid",
+            "This harmonization run is not attached to a grid, so it has no map geometry.",
+            409,
+        )
+
+    query_sql, query_params = sql.harmonized_map_points(
+        run_row["run_id"], grid_id, both_only, limit, offset
+    )
+    rows = database.fetch_all(query_sql, query_params)
+    count_sql, count_params = sql.harmonized_map_point_count(
+        run_row["run_id"], grid_id, both_only
+    )
+    total = int(database.fetch_scalar(count_sql, count_params) or 0)
+
+    return {
+        "run_id": run_row["run_id"],
+        "grid_id": grid_id,
+        "both_sensors_only": both_only,
+        "total": total,
+        "returned": len(rows),
+        "cells": rows,
+        "notes": [
+            "Each point is a grid cell-day (cell centre), not a detection.",
+            "sensors_present = 2 means MODIS and VIIRS both reported in that cell-day; "
+            "1 means only one sensor did.",
+            "The harmonized index is unitless and relative to this run's own p95 scales.",
+            "Points are ordered by the harmonized index, so a bounded sample keeps the strongest cells.",
+        ],
+    }

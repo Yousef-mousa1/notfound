@@ -35,6 +35,22 @@ SENSOR_BANDS: dict[str, dict[str, str]] = {
 
 SENSORS: tuple[str, ...] = ("modis", "viirs")
 
+#: Values of the ``instrument`` column that identify each product. Some VIIRS
+#: extracts are delivered with MODIS-style band headers (``brightness`` /
+#: ``bright_t31``), so the instrument column is the tie-breaker.
+INSTRUMENT_SENSORS: dict[str, str] = {
+    "MODIS": "modis",
+    "VIIRS": "viirs",
+    # Some extracts put the platform name in `instrument` instead.
+    "TERRA": "modis",
+    "AQUA": "modis",
+    "SNPP": "viirs",
+    "NOAA-20": "viirs",
+    "NOAA-21": "viirs",
+    "JPSS-1": "viirs",
+    "JPSS-2": "viirs",
+}
+
 #: Unified observation columns, in physical storage order.
 UNIFIED_COLUMNS: tuple[str, ...] = (
     "observation_id",
@@ -59,24 +75,56 @@ UNIFIED_COLUMNS: tuple[str, ...] = (
 )
 
 
-def detected_sensor(columns: Sequence[str]) -> str | None:
+def detected_sensor(
+    columns: Sequence[str],
+    instrument_values: Sequence[str] | None = None,
+) -> str | None:
     """Infer the sensor from the presence of its unique brightness band.
+
+    When ``instrument_values`` is given (the distinct values of the
+    ``instrument`` column), it takes precedence: a file whose instrument is
+    VIIRS but whose bands are named like MODIS is still a VIIRS file.
 
     Returns ``None`` when the header matches neither product, which is treated
     as an unsupported file rather than guessed.
     """
     normalized = {column.strip().lower() for column in columns}
+    if instrument_values:
+        named = {
+            INSTRUMENT_SENSORS[str(value).strip().upper()]
+            for value in instrument_values
+            if str(value).strip().upper() in INSTRUMENT_SENSORS
+        }
+        if len(named) == 1:
+            return named.pop()
     for sensor, bands in SENSOR_BANDS.items():
         if bands["primary"] in normalized:
             return sensor
     return None
 
 
-def missing_columns(columns: Sequence[str], sensor: str) -> list[str]:
+def sensor_bands(columns: Sequence[str], sensor: str) -> dict[str, str]:
+    """Return the brightness columns actually present for ``sensor``.
+
+    VIIRS files normally carry ``bright_ti4``/``bright_ti5``; some extracts
+    carry the MODIS names instead. Both are accepted for VIIRS.
+    """
+    normalized = {column.strip().lower() for column in columns}
+    if sensor == "viirs" and "bright_ti4" not in normalized and "brightness" in normalized:
+        return SENSOR_BANDS["modis"]
+    return SENSOR_BANDS[sensor]
+
+
+def missing_columns(
+    columns: Sequence[str],
+    sensor: str,
+    bands: dict[str, str] | None = None,
+) -> list[str]:
     """Return required columns absent from ``columns`` for ``sensor``."""
     if sensor not in SENSOR_BANDS:
         raise ValueError(f"Unsupported sensor: {sensor}")
 
     normalized = {column.strip().lower() for column in columns}
-    required = COMMON_REQUIRED + tuple(SENSOR_BANDS[sensor].values())
+    resolved = bands or sensor_bands(columns, sensor)
+    required = COMMON_REQUIRED + tuple(resolved.values())
     return [column for column in required if column not in normalized]

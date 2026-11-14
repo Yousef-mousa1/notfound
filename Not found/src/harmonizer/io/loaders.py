@@ -17,7 +17,12 @@ from pathlib import Path
 
 import pandas as pd
 
-from ..schema.columns import SENSOR_BANDS, detected_sensor, missing_columns
+from ..schema.columns import (
+    SENSOR_BANDS,
+    detected_sensor,
+    missing_columns,
+    sensor_bands,
+)
 
 
 @dataclass
@@ -50,7 +55,16 @@ def read_header(path: str | Path) -> list[str]:
 
 def detect_file_sensor(path: str | Path) -> str | None:
     """Detect the sensor of a file from its header (never from its name)."""
-    return detected_sensor(read_header(path))
+    return detected_sensor(read_header(path), read_instrument_values(path))
+
+
+def read_instrument_values(path: str | Path, nrows: int = 5000) -> set[str]:
+    """Read the distinct ``instrument`` values from the first rows of a file."""
+    try:
+        sample = pd.read_csv(path, usecols=["instrument"], dtype=str, nrows=nrows)
+    except (ValueError, KeyError, pd.errors.ParserError):
+        return set()
+    return {str(value).strip() for value in sample["instrument"].dropna().unique()}
 
 
 def load_detections(
@@ -74,12 +88,12 @@ def load_detections(
     if sensor not in SENSOR_BANDS:
         raise ValueError(f"Unsupported sensor: {sensor}")
 
-    bands = SENSOR_BANDS[sensor]
     # dtype=str: prevents silent numeric/date coercion and leading-zero loss.
     raw = pd.read_csv(path, dtype=str, keep_default_na=False, na_filter=False)
 
-    detected = detected_sensor(list(raw.columns))
-    missing = missing_columns(list(raw.columns), sensor)
+    bands = sensor_bands(list(raw.columns), sensor)
+    detected = detected_sensor(list(raw.columns), read_instrument_values(path))
+    missing = missing_columns(list(raw.columns), sensor, bands)
     if detected != sensor or missing:
         raise ValueError(
             f"File does not match sensor '{sensor}': detected={detected}, missing={missing}"

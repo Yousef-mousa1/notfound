@@ -31,6 +31,10 @@ storage:
 
 api:
   prefix: "/api/v1"
+  # Origins allowed to call this API from a browser (CORS).
+  cors_origins:
+    - "http://localhost:5173"
+    - "http://127.0.0.1:5173"
   default_limit: 100
   max_limit: 1000
 

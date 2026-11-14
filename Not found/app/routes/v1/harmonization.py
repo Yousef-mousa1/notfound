@@ -8,6 +8,7 @@ from ...db import get_db
 from ...errors import ApiError
 from ...schemas.harmonization import (
     CalibrateRequest,
+    CellMapQuery,
     HarmonizationRunRequest,
     MetricQuery,
     ResultQuery,
@@ -156,4 +157,23 @@ def activity_index():
     return ok(
         jsonable(payload),
         {**page_meta(total, query.limit, query.offset), "run_id": payload["run_id"]},
+    )
+
+
+@harmonization_blueprint.get("/harmonization/cells")
+def cells():
+    """Map points for a run's cell-days (grid cell centres, not detections)."""
+    query = parse_query(CellMapQuery)
+    payload = service.map_cells(
+        get_db(), query.run_id, query.both_only, query.limit, query.offset
+    )
+    total = payload["total"]
+    return ok(
+        jsonable(payload),
+        {
+            **page_meta(total, query.limit, query.offset),
+            "run_id": payload["run_id"],
+            "grid_id": payload["grid_id"],
+            "time_basis": "UTC (assumed; timezone verification pending - dataset-facts.md §2)",
+        },
     )

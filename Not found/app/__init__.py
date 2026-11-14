@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 
 from harmonizer.config import load_config
 
@@ -49,6 +49,25 @@ def create_app(config_path: str | Path | None = None) -> Flask:
     init_database(app)
     app.extensions["job_runner"] = JobRunner(app.extensions["db"], config)
     register_error_handlers(app)
+
+    # CORS: the React frontend (Vite dev server or a separate static host) is
+    # served from a different origin than this API. Origins are configured in
+    # config/default.yaml -> api.cors_origins.
+    allowed_origins = set(
+        (config.get("api") or {}).get("cors_origins")
+        or ["http://localhost:5173", "http://127.0.0.1:5173"]
+    )
+
+    @app.after_request
+    def add_cors_headers(response):
+        origin = request.headers.get("Origin")
+        if origin and origin in allowed_origins:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Vary"] = "Origin"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+            response.headers["Access-Control-Max-Age"] = "600"
+        return response
 
     app.register_blueprint(health_blueprint)
     app.register_blueprint(ui_blueprint)

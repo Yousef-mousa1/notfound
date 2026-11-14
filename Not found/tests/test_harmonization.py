@@ -256,3 +256,38 @@ def test_activity_index_without_runs_returns_409(client, imported):
     response = client.get("/api/v1/harmonization/activity-index")
     assert response.status_code == 409
     assert response.get_json()["error"]["code"] == "no_harmonization_run"
+
+
+def test_cells_endpoint_returns_cell_centres_for_the_map(client):
+    _import_calibration_pair(client)
+    grid_id = _grid_id(client)
+    run = client.post(
+        "/api/v1/harmonization/run",
+        json={
+            "grid_id": grid_id,
+            "time_bucket": "none",
+            "method": "ratio",
+            "radius_m": 2000,
+            "time_window_h": 1,
+        },
+    ).get_json()["data"]
+
+    response = client.get("/api/v1/harmonization/cells?limit=1000")
+    assert response.status_code == 200, response.get_json()
+    payload = response.get_json()
+    data = payload["data"]
+    assert data["run_id"] == run["run_id"]
+    assert data["grid_id"] == grid_id
+    assert data["total"] == run["n_cells"]
+    assert data["returned"] == len(data["cells"])
+    assert payload["meta"]["total"] == run["n_cells"]
+    for cell in data["cells"]:
+        assert isinstance(cell["center_lat"], float)
+        assert isinstance(cell["center_lon"], float)
+        assert cell["sensors_present"] in {1, 2}
+        assert cell["day"]
+
+    both = client.get("/api/v1/harmonization/cells?both_only=true&limit=1000")
+    assert both.status_code == 200
+    both_cells = both.get_json()["data"]["cells"]
+    assert all(cell["sensors_present"] == 2 for cell in both_cells)

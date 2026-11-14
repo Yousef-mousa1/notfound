@@ -43,6 +43,13 @@ class RunQuery(PageQuery):
     run_id: str | None = None
 
 
+class CellMapQuery(PageQuery):
+    """Map points for a run's per-cell results."""
+
+    run_id: str | None = None
+    both_only: bool = False
+
+
 class ResultQuery(PageQuery):
     """Page through a run's per-cell results."""
 
