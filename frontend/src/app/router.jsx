@@ -1,12 +1,11 @@
 import { lazy, Suspense } from "react";
 import { createBrowserRouter } from "react-router-dom";
-
 import MainLayout from "../components/layout/MainLayout";
 
-// Route-level code splitting: the 3D globe (three.js) and the charts
+// Route-level code splitting: the map (MapLibre) and the charts
 // (recharts) only load when their page is opened.
 const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage"));
-const FireMapPage = lazy(() => import("../features/fire-map/FireMapPage"));
+const FireMapPage = lazy(() => import("../features/fire-map/GisMapPage"));
 const CalendarPage = lazy(() => import("../features/calendar/CalendarPage"));
 const AnalyticsPage = lazy(() => import("../features/analytics/AnalyticsPage"));
 const ExportPage = lazy(() => import("../features/export/ExportPage"));
