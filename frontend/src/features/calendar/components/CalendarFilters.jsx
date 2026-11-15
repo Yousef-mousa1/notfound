@@ -27,7 +27,10 @@ export default function CalendarFilters({
             <option value="all">All data extent</option>
             {regions.map((item) => (
               <option key={item.region} value={item.region}>
-                {item.region} · {item.detections.toLocaleString("en-US")} detections
+                {item.label ?? item.region}
+                {item.detections !== undefined
+                  ? ` · ${item.detections.toLocaleString("en-US")} detections`
+                  : ""}
               </option>
             ))}
           </select>
@@ -70,6 +73,7 @@ export default function CalendarFilters({
             <option value="modis">MODIS detections</option>
             <option value="viirs">VIIRS detections</option>
             <option value="mean_frp">Mean FRP (MW)</option>
+            <option value="vs_year_pct">Vs rest of year (%)</option>
             <option value="anomaly_percentage" disabled={!baselineAvailable}>
               Anomaly vs multi-year median{baselineAvailable ? "" : " (needs 2+ years)"}
             </option>
@@ -77,11 +81,19 @@ export default function CalendarFilters({
         </div>
       </div>
 
+      {region !== "all" && (
+        <p className="mt-4 text-[11px] leading-5 text-(--text-secondary)">
+          Regions are approximate bounding boxes: they can overlap and include sea and
+          neighbouring countries.
+        </p>
+      )}
+
       {!baselineAvailable && (
         <p className="mt-4 rounded-lg bg-(--surface-secondary) p-3 text-[11px] leading-5 text-(--text-secondary)">
           Historical median and anomaly percentage need at least two years of data.
           The current store holds a single year, so those metrics stay disabled instead
-          of showing a fabricated baseline.
+          of showing a fabricated baseline. “Vs rest of year” compares each full month with
+          the average of the other full months in the same year.
         </p>
       )}
     </section>

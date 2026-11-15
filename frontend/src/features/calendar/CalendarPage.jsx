@@ -12,8 +12,13 @@ import {
   isoDate,
   monthNames,
 } from "./utils/calendarHelpers";
+import { REGION_PRESETS } from "./utils/regionPresets";
 
-import { analyticsRegions, dashboardCalendar, monthlyAnalytics } from "../../api/endpoints";
+import {
+  dashboardCalendar,
+  monthlyAnalytics,
+  observationStatistics,
+} from "../../api/endpoints";
 import Panel from "../../components/common/Panel";
 import { EmptyState, ErrorState, LoadingState } from "../../components/common/QueryState";
 import { useApi } from "../../hooks/useApi";
@@ -27,8 +32,9 @@ const bboxOf = (regions, code) => {
 };
 
 export default function CalendarPage() {
-  const regionsApi = useApi((options) => analyticsRegions(options), []);
-  const regions = regionsApi.data ?? [];
+  // تواريخ أول وآخر detection في الداتا، عشان نعرف الشهور الناقصة
+  const statsApi = useApi((options) => observationStatistics(options), []);
+  const coverage = statsApi.data?.overall ?? null;
 
   const [region, setRegion] = useState("all");
   const [metric, setMetric] = useState("total");
@@ -36,7 +42,7 @@ export default function CalendarPage() {
   const [selection, setSelection] = useState({ year: null, month: null });
   const [selectedDay, setSelectedDay] = useState(null);
 
-  const bbox = region === "all" ? undefined : bboxOf(regions, region);
+  const bbox = region === "all" ? undefined : bboxOf(REGION_PRESETS, region);
 
   const monthlyApi = useApi(
     (options) => monthlyAnalytics({ ...options, bbox }),
@@ -64,20 +70,77 @@ export default function CalendarPage() {
     [series, startYear, endYear]
   );
 
-  const latestWithData = useMemo(
-    () => [...filtered].reverse().find((item) => item.total > 0) ?? filtered.at(-1) ?? null,
-    [filtered]
-  );
+  // الشهر الأول والأخير ناقصين لو الداتا ما بتغطيش الشهر كله
+  const partialMonths = useMemo(() => {
+    const keys = new Set();
+    if (!coverage?.first_detection_utc || !coverage?.last_detection_utc) return keys;
+    const first = new Date(coverage.first_detection_utc);
+    const last = new Date(coverage.last_detection_utc);
+    if (Number.isNaN(first.getTime()) || Number.isNaN(last.getTime())) return keys;
+
+    const firstYear = first.getUTCFullYear();
+    const firstMonth = first.getUTCMonth() + 1;
+    const lastYear = last.getUTCFullYear();
+    const lastMonth = last.getUTCMonth() + 1;
+
+    if (first.getUTCDate() > 1) keys.add(`${firstYear}-${firstMonth}`);
+    if (last.getUTCDate() < daysInMonth(lastYear, lastMonth)) {
+      keys.add(`${lastYear}-${lastMonth}`);
+    }
+    return keys;
+  }, [coverage]);
+
+  // علامة الشهر الناقص + مقارنة كل شهر بمتوسط باقي الشهور الكاملة في نفس السنة
+  const heatmapData = useMemo(() => {
+    const flagged = filtered.map((item) => ({
+      ...item,
+      partial: partialMonths.has(`${item.year}-${item.month}`),
+    }));
+
+    const fullByYear = new Map();
+    for (const item of flagged) {
+      if (item.partial) continue;
+      const list = fullByYear.get(item.year) ?? [];
+      list.push(item);
+      fullByYear.set(item.year, list);
+    }
+
+    return flagged.map((item) => {
+      let vsYearPct = null;
+      if (!item.partial) {
+        const others = (fullByYear.get(item.year) ?? []).filter(
+          (other) => other.month !== item.month
+        );
+        if (others.length >= 3) {
+          const mean = others.reduce((sum, other) => sum + other.total, 0) / others.length;
+          if (mean > 0) vsYearPct = ((item.total - mean) / mean) * 100;
+        }
+      }
+      return { ...item, vs_year_pct: vsYearPct };
+    });
+  }, [filtered, partialMonths]);
+
+  // الاختيار الافتراضي: آخر شهر كامل فيه داتا
+  const latestWithData = useMemo(() => {
+    const reversed = [...heatmapData].reverse();
+    return (
+      reversed.find((item) => item.total > 0 && !item.partial) ??
+      reversed.find((item) => item.total > 0) ??
+      heatmapData.at(-1) ??
+      null
+    );
+  }, [heatmapData]);
 
   const selectedYear = selection.year ?? latestWithData?.year ?? null;
   const selectedMonth = selection.month ?? latestWithData?.month ?? null;
+  const selectedPartial = partialMonths.has(`${selectedYear}-${selectedMonth}`);
 
   const selectedMonthData = useMemo(
     () =>
-      filtered.find(
+      heatmapData.find(
         (item) => item.year === selectedYear && item.month === selectedMonth
       ) ?? null,
-    [filtered, selectedYear, selectedMonth]
+    [heatmapData, selectedYear, selectedMonth]
   );
 
   const monthStart = selectedYear && selectedMonth
@@ -145,6 +208,11 @@ export default function CalendarPage() {
 
   const baselineAvailable = availableYears.length >= 2;
 
+  const coverageText =
+    coverage?.first_detection_utc && coverage?.last_detection_utc
+      ? `${coverage.first_detection_utc.slice(0, 10)} → ${coverage.last_detection_utc.slice(0, 10)}`
+      : "";
+
   return (
     <div className="space-y-7">
       <div>
@@ -154,33 +222,19 @@ export default function CalendarPage() {
         </p>
       </div>
 
-      {regionsApi.loading && (
-        <Panel>
-          <LoadingState label="Loading regions…" />
-        </Panel>
-      )}
-
-      {regionsApi.error && (
-        <Panel>
-          <ErrorState error={regionsApi.error} onRetry={regionsApi.reload} />
-        </Panel>
-      )}
-
-      {!regionsApi.loading && !regionsApi.error && (
-        <CalendarFilters
-          regions={regions}
-          region={region}
-          onRegionChange={handleRegionChange}
-          startYear={startYear}
-          endYear={endYear}
-          onStartYearChange={handleStartYearChange}
-          onEndYearChange={handleEndYearChange}
-          metric={metric}
-          onMetricChange={setMetric}
-          availableYears={availableYears}
-          baselineAvailable={baselineAvailable}
-        />
-      )}
+      <CalendarFilters
+        regions={REGION_PRESETS}
+        region={region}
+        onRegionChange={handleRegionChange}
+        startYear={startYear}
+        endYear={endYear}
+        onStartYearChange={handleStartYearChange}
+        onEndYearChange={handleEndYearChange}
+        metric={metric}
+        onMetricChange={setMetric}
+        availableYears={availableYears}
+        baselineAvailable={baselineAvailable}
+      />
 
       {monthlyApi.loading && (
         <Panel>
@@ -206,7 +260,7 @@ export default function CalendarPage() {
       {filtered.length > 0 && (
         <>
           <YearlyHeatmap
-            data={filtered}
+            data={heatmapData}
             metric={metric}
             onMonthSelect={handleMonthSelect}
             selected={{ year: selectedYear, month: selectedMonth }}
@@ -216,6 +270,13 @@ export default function CalendarPage() {
             <h3 className="mb-4 text-lg font-semibold">
               {monthNames[(selectedMonth ?? 1) - 1]} {selectedYear} summary
             </h3>
+            {selectedPartial && (
+              <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-500">
+                Partial month: the stored data covers only part of this month
+                {coverageText ? ` (data range ${coverageText})` : ""}. Its totals are not
+                comparable with full months.
+              </p>
+            )}
             {selectedMonthData ? (
               <MonthSummary data={selectedMonthData} dailyStats={dailyStats} />
             ) : (

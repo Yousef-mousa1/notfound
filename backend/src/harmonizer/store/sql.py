@@ -828,3 +828,34 @@ def harmonized_map_point_count(
         "WHERE " + " AND ".join(where),
         [grid_id, *params],
     )
+
+
+def grid_counts(
+    filters: dict[str, Any], cell_deg: float, n_rows: int, n_cols: int, limit: int
+) -> tuple[str, list[Any]]:
+    """Detections per fixed lat/lon cell, sensors counted separately.
+
+    FRP is reported as mean/max instantaneous power only; it is never summed.
+    """
+    where, params = build_where(filters)
+    sql = f"""
+        WITH mapped AS (
+            SELECT
+                least(greatest(CAST(floor((lat + 90.0) / ?) AS INTEGER), 0), ?) AS row_index,
+                least(greatest(CAST(floor((lon + 180.0) / ?) AS INTEGER), 0), ?) AS col_index,
+                sensor, frp_mw
+            FROM observations {where}
+        )
+        SELECT
+            row_index, col_index,
+            count(*) AS detections,
+            count(*) FILTER (WHERE sensor = 'modis') AS modis,
+            count(*) FILTER (WHERE sensor = 'viirs') AS viirs,
+            avg(frp_mw) AS mean_frp_mw,
+            max(frp_mw) AS max_frp_mw
+        FROM mapped
+        GROUP BY row_index, col_index
+        ORDER BY detections DESC, row_index, col_index
+        LIMIT ?
+    """
+    return sql, [cell_deg, n_rows - 1, cell_deg, n_cols - 1, *params, limit]

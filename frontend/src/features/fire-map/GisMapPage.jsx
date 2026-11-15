@@ -3,10 +3,13 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./gis.css";
 
-const SOURCE_ID = "fires";
+const GRID_ID = "grid";
+const POINTS_ID = "fires";
 const START_VIEW = { center: [20, 12], zoom: 0.9 };
 const EXPLORE_VIEW = { center: [15, 8], zoom: 2.6, pitch: 25, bearing: -12 };
-const FETCH_LIMIT = 1000;
+const GRID_LIMIT = 20000;
+const POINT_LIMIT = 1000; // أقصى حد يسمح به الباك لـ /observations/map
+const POINTS_MIN_ZOOM = 7;
 const SPIN_DEG_PER_SEC = 9;
 const EMPTY = { type: "FeatureCollection", features: [] };
 
@@ -29,8 +32,8 @@ const LOOKS = {
       "raster-saturation": -0.2,
       "raster-contrast": 0.2,
     },
-    tint: 0.5, // طبقة الأزرق الداكن فوق التضاريس
-    lights: 0.62, // قوة أضواء المدن
+    tint: 0.5,
+    lights: 0.62,
   },
   day: {
     relief: {
@@ -104,6 +107,42 @@ const reduceMotion = () =>
 
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 
+// حجم الخلية بالدرجات حسب الـ zoom
+function cellForZoom(z) {
+  if (z < 1.5) return 4;
+  if (z < 2.5) return 2;
+  if (z < 3.5) return 1;
+  if (z < 4.5) return 0.5;
+  if (z < 5.5) return 0.25;
+  return 0.1;
+}
+
+function viewportBbox(map) {
+  const b = map.getBounds();
+  const w = b.getWest();
+  const e = b.getEast();
+  const wraps = w > e || e - w >= 359 || w < -180 || e > 180;
+  const box = wraps
+    ? [-180, -90, 180, 90]
+    : [w, clamp(b.getSouth(), -90, 90), e, clamp(b.getNorth(), -90, 90)];
+  return box.map((n) => n.toFixed(4)).join(",");
+}
+
+async function fetchJson(url, signal) {
+  const res = await fetch(url, { signal });
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const body = await res.json();
+      detail = body?.error?.details?.[0]?.msg ?? body?.error?.message ?? "";
+    } catch {
+      /* الرد مش JSON */
+    }
+    throw new Error(`API ${res.status}${detail ? `: ${detail}` : ""}`);
+  }
+  return res.json();
+}
+
 // يقبل GeoJSON جاهز، أو {data: [{lat, lon, ...}]}
 function toFeatureCollection(json) {
   if (json && json.type === "FeatureCollection") return json;
@@ -126,6 +165,21 @@ function toFeatureCollection(json) {
   return { type: "FeatureCollection", features };
 }
 
+function openPopup(map, lngLat, rows) {
+  const el = document.createElement("div");
+  el.className = "gis-popup";
+  for (const [k, v] of rows) {
+    const row = document.createElement("div");
+    const key = document.createElement("span");
+    key.textContent = k;
+    const val = document.createElement("b");
+    val.textContent = v;
+    row.append(key, val);
+    el.append(row);
+  }
+  new maplibregl.Popup({ offset: 10 }).setLngLat(lngLat).setDOMContent(el).addTo(map);
+}
+
 const FRP = ["to-number", ["coalesce", ["get", "frp"], ["get", "frp_mw"]], 0];
 
 export default function GisMapPage() {
@@ -135,19 +189,24 @@ export default function GisMapPage() {
   const spinRef = useRef({ active: false, raf: 0, last: 0 });
   const abortRef = useRef(null);
   const debounceRef = useRef(0);
+  const cellsRef = useRef([]);
 
   const [phase, setPhase] = useState("intro");
   const [ready, setReady] = useState(false);
   const [look, setLook] = useState("night");
-  const [showHeat, setShowHeat] = useState(true);
+  const [gridVersion, setGridVersion] = useState(0);
+  const [showGrid, setShowGrid] = useState(true);
   const [showPoints, setShowPoints] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
   const [showModis, setShowModis] = useState(true);
   const [showViirs, setShowViirs] = useState(true);
   const [status, setStatus] = useState({
     state: "idle",
-    returned: 0,
-    total: null,
+    cells: 0,
+    cellDeg: 0,
+    total: 0,
+    truncated: false,
+    points: 0,
     message: "",
   });
 
@@ -181,43 +240,45 @@ export default function GisMapPage() {
 
   const loadData = useCallback(async () => {
     const map = mapRef.current;
-    const source = map?.getSource(SOURCE_ID);
-    if (!map || !source) return;
+    if (!map) return;
 
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
-    const b = map.getBounds();
-    const w = b.getWest();
-    const e = b.getEast();
-    const wraps = w > e || e - w >= 359 || w < -180 || e > 180;
-    const bbox = wraps
-      ? [-180, -90, 180, 90]
-      : [w, clamp(b.getSouth(), -90, 90), e, clamp(b.getNorth(), -90, 90)];
+    const bbox = viewportBbox(map);
+    const zoom = map.getZoom();
+    const cellDeg = cellForZoom(zoom);
 
     setStatus((s) => ({ ...s, state: "loading" }));
     try {
-      const params = new URLSearchParams({
-        bbox: bbox.map((n) => n.toFixed(4)).join(","),
-        limit: String(FETCH_LIMIT),
+      const gridParams = new URLSearchParams({
+        bbox,
+        cell_deg: String(cellDeg),
+        limit: String(GRID_LIMIT),
       });
-      const res = await fetch(`/api/v1/observations/map?${params}`, {
-        signal: controller.signal,
-      });
-      if (!res.ok) throw new Error(`API ${res.status}`);
-      const json = await res.json();
-      const fc = toFeatureCollection(json);
-      source.setData(fc);
+      const requests = [fetchJson(`/api/v1/observations/grid?${gridParams}`, controller.signal)];
+      if (zoom >= POINTS_MIN_ZOOM) {
+        const pointParams = new URLSearchParams({ bbox, limit: String(POINT_LIMIT) });
+        requests.push(fetchJson(`/api/v1/observations/map?${pointParams}`, controller.signal));
+      }
+      const [grid, points] = await Promise.all(requests);
+
+      cellsRef.current = grid.data ?? [];
+      map.getSource(POINTS_ID)?.setData(points ? toFeatureCollection(points) : EMPTY);
+      setGridVersion((v) => v + 1);
       setStatus({
         state: "ready",
-        returned: fc.features.length,
-        total: json?.meta?.total ?? null,
+        cells: cellsRef.current.length,
+        cellDeg,
+        total: grid.meta?.total_detections ?? 0,
+        truncated: Boolean(grid.meta?.truncated),
+        points: points?.data?.length ?? 0,
         message: "",
       });
     } catch (err) {
       if (err.name === "AbortError") return;
-      setStatus({ state: "error", returned: 0, total: null, message: err.message });
+      setStatus((s) => ({ ...s, state: "error", message: err.message }));
     }
   }, []);
 
@@ -246,42 +307,50 @@ export default function GisMapPage() {
     });
 
     map.on("load", () => {
-      map.addSource(SOURCE_ID, { type: "geojson", data: EMPTY });
+      map.addSource(GRID_ID, { type: "geojson", data: EMPTY });
+      map.addSource(POINTS_ID, { type: "geojson", data: EMPTY });
 
+      // الخلايا: اللون حسب عدد الـ detections (مقياس log)
       map.addLayer({
-        id: "fires-heat",
-        type: "heatmap",
-        source: SOURCE_ID,
-        maxzoom: 9,
+        id: "grid-fill",
+        type: "fill",
+        source: GRID_ID,
         paint: {
-          "heatmap-weight": ["interpolate", ["linear"], FRP, 0, 0.15, 30, 0.6, 150, 1],
-          "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 0.8, 9, 2.5],
-          "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 6, 4, 14, 9, 30],
-          "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 6, 0.95, 9, 0],
-          "heatmap-color": [
+          "fill-antialias": false,
+          "fill-color": [
             "interpolate",
             ["linear"],
-            ["heatmap-density"],
-            0, "rgba(225,29,72,0)",
-            0.2, "rgba(159,18,57,0.55)",
-            0.4, "#e11d48",
-            0.6, "#ff4d00",
-            0.8, "#ff9e00",
-            1, "#fff1c9",
+            ["ln", ["+", ["get", "n"], 1]],
+            0.69, "rgba(159,18,57,0.40)",
+            2.4, "rgba(225,29,72,0.60)",
+            4.6, "rgba(255,77,0,0.78)",
+            6.9, "rgba(255,241,201,0.92)",
           ],
+          "fill-opacity": ["interpolate", ["linear"], ["zoom"], 0, 0.95, 7, 0.85, 9, 0.3],
         },
       });
 
       map.addLayer({
+        id: "grid-line",
+        type: "line",
+        source: GRID_ID,
+        minzoom: 4,
+        paint: {
+          "line-color": "rgba(255,255,255,0.10)",
+          "line-width": 0.5,
+        },
+      });
+
+      // النقط الفردية (لما تقرّب)
+      map.addLayer({
         id: "fires-points",
         type: "circle",
-        source: SOURCE_ID,
+        source: POINTS_ID,
+        minzoom: POINTS_MIN_ZOOM,
         paint: {
           "circle-radius": [
             "interpolate", ["linear"], ["zoom"],
-            0, ["interpolate", ["linear"], FRP, 0, 0.8, 100, 1.6],
-            5, ["interpolate", ["linear"], FRP, 0, 1.5, 100, 3],
-            9, ["interpolate", ["linear"], FRP, 0, 3, 100, 8],
+            7, ["interpolate", ["linear"], FRP, 0, 2.5, 100, 6],
             12, ["interpolate", ["linear"], FRP, 0, 5, 100, 14],
           ],
           "circle-color": [
@@ -290,9 +359,9 @@ export default function GisMapPage() {
             "viirs", "#22d3ee",
             "#ffffff",
           ],
-          "circle-opacity": ["interpolate", ["linear"], ["zoom"], 0, 0.45, 5, 0.7, 8, 0.95],
-          "circle-stroke-color": "rgba(255,255,255,0.7)",
-          "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 6, 0, 9, 0.6],
+          "circle-opacity": 0.95,
+          "circle-stroke-color": "rgba(255,255,255,0.8)",
+          "circle-stroke-width": 0.7,
         },
       });
 
@@ -319,33 +388,34 @@ export default function GisMapPage() {
         const f = e.features?.[0];
         if (!f) return;
         const p = f.properties ?? {};
-        const el = document.createElement("div");
-        el.className = "gis-popup";
-        const rows = [
+        openPopup(map, f.geometry.coordinates, [
           ["Sensor", String(p.sensor ?? "—").toUpperCase()],
-          ["FRP", `${Number(p.frp ?? p.frp_mw ?? 0).toFixed(1)} MW`],
+          ["FRP", `${Number(p.frp ?? 0).toFixed(1)} MW`],
           ["Time (UTC)", p.time || "—"],
-        ];
-        for (const [k, v] of rows) {
-          const row = document.createElement("div");
-          const key = document.createElement("span");
-          key.textContent = k;
-          const val = document.createElement("b");
-          val.textContent = v;
-          row.append(key, val);
-          el.append(row);
-        }
-        new maplibregl.Popup({ offset: 10 })
-          .setLngLat(f.geometry.coordinates)
-          .setDOMContent(el)
-          .addTo(map);
+        ]);
       });
-      map.on("mouseenter", "fires-points", () => {
-        map.getCanvas().style.cursor = "pointer";
+
+      map.on("click", "grid-fill", (e) => {
+        if (map.queryRenderedFeatures(e.point, { layers: ["fires-points"] }).length) return;
+        const f = e.features?.[0];
+        if (!f) return;
+        const p = f.properties ?? {};
+        openPopup(map, e.lngLat, [
+          ["Detections", Number(p.n).toLocaleString()],
+          ["MODIS", Number(p.modis).toLocaleString()],
+          ["VIIRS", Number(p.viirs).toLocaleString()],
+          ["Max FRP", `${Number(p.max_frp ?? 0).toFixed(1)} MW`],
+        ]);
       });
-      map.on("mouseleave", "fires-points", () => {
-        map.getCanvas().style.cursor = "";
-      });
+
+      for (const layer of ["grid-fill", "fires-points"]) {
+        map.on("mouseenter", layer, () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", layer, () => {
+          map.getCanvas().style.cursor = "";
+        });
+      }
 
       setReady(true);
       startSpin();
@@ -389,17 +459,50 @@ export default function GisMapPage() {
     map.setLayoutProperty("country-borders", "visibility", v);
   }, [ready, showLabels]);
 
-  // فلاتر وطبقات الحرائق
+  // رسم الخلايا (بيتحدّث فوراً مع زراير MODIS / VIIRS)
   useEffect(() => {
     const map = mapRef.current;
-    if (!ready || !map || !map.getLayer("fires-heat")) return;
+    const source = map?.getSource(GRID_ID);
+    if (!ready || !source) return;
+    const features = [];
+    for (const c of cellsRef.current) {
+      const n = (showModis ? c.modis : 0) + (showViirs ? c.viirs : 0);
+      if (n <= 0) continue;
+      features.push({
+        type: "Feature",
+        geometry: {
+          type: "Polygon",
+          coordinates: [[
+            [c.min_lon, c.min_lat],
+            [c.max_lon, c.min_lat],
+            [c.max_lon, c.max_lat],
+            [c.min_lon, c.max_lat],
+            [c.min_lon, c.min_lat],
+          ]],
+        },
+        properties: {
+          n,
+          modis: c.modis,
+          viirs: c.viirs,
+          max_frp: c.max_frp_mw,
+          mean_frp: c.mean_frp_mw,
+        },
+      });
+    }
+    source.setData({ type: "FeatureCollection", features });
+  }, [ready, gridVersion, showModis, showViirs]);
+
+  // فلاتر وطبقات
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || !map.getLayer("fires-points")) return;
     const sensors = [showModis && "modis", showViirs && "viirs"].filter(Boolean);
-    const filter = ["in", ["get", "sensor"], ["literal", sensors]];
-    map.setFilter("fires-heat", filter);
-    map.setFilter("fires-points", filter);
-    map.setLayoutProperty("fires-heat", "visibility", showHeat ? "visible" : "none");
+    map.setFilter("fires-points", ["in", ["get", "sensor"], ["literal", sensors]]);
     map.setLayoutProperty("fires-points", "visibility", showPoints ? "visible" : "none");
-  }, [ready, showHeat, showPoints, showModis, showViirs]);
+    const g = showGrid ? "visible" : "none";
+    map.setLayoutProperty("grid-fill", "visibility", g);
+    map.setLayoutProperty("grid-line", "visibility", g);
+  }, [ready, showGrid, showPoints, showModis, showViirs]);
 
   const handleExplore = () => {
     const map = mapRef.current;
@@ -424,8 +527,18 @@ export default function GisMapPage() {
     if (!map) return;
     abortRef.current?.abort();
     changePhase("intro");
-    map.getSource(SOURCE_ID)?.setData(EMPTY);
-    setStatus({ state: "idle", returned: 0, total: null, message: "" });
+    cellsRef.current = [];
+    setGridVersion((v) => v + 1);
+    map.getSource(POINTS_ID)?.setData(EMPTY);
+    setStatus({
+      state: "idle",
+      cells: 0,
+      cellDeg: 0,
+      total: 0,
+      truncated: false,
+      points: 0,
+      message: "",
+    });
     if (reduceMotion()) {
       map.jumpTo({ ...START_VIEW, pitch: 0, bearing: 0 });
       return;
@@ -435,14 +548,15 @@ export default function GisMapPage() {
   };
 
   const statusText = (() => {
-    if (status.state === "loading") return "Loading hotspots…";
+    if (status.state === "loading") return "Loading…";
     if (status.state === "error") return `Could not load data (${status.message})`;
     if (status.state !== "ready") return "";
-    const shown = status.returned.toLocaleString();
-    if (status.total && status.total > status.returned) {
-      return `Showing ${shown} of ${status.total.toLocaleString()} in view — zoom in for more`;
-    }
-    return `${shown} hotspots in view`;
+    const parts = [
+      `${status.total.toLocaleString()} detections in ${status.cells.toLocaleString()} cells of ${status.cellDeg}°`,
+    ];
+    if (status.truncated) parts.push("busiest cells only");
+    if (status.points) parts.push(`${status.points.toLocaleString()} points`);
+    return parts.join(" · ");
   })();
 
   const panelClass = `gis-panel ${phase === "explore" ? "is-visible" : ""}`;
@@ -501,12 +615,12 @@ export default function GisMapPage() {
         <div className="gis-sep" />
 
         <label className="gis-switch">
-          <input type="checkbox" checked={showHeat} onChange={(e) => setShowHeat(e.target.checked)} />
-          <span className="gis-switch__ui" /> Heatmap
+          <input type="checkbox" checked={showGrid} onChange={(e) => setShowGrid(e.target.checked)} />
+          <span className="gis-switch__ui" /> Density grid
         </label>
         <label className="gis-switch">
           <input type="checkbox" checked={showPoints} onChange={(e) => setShowPoints(e.target.checked)} />
-          <span className="gis-switch__ui" /> Points
+          <span className="gis-switch__ui" /> Points (zoom in)
         </label>
         <label className="gis-switch">
           <input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} />
@@ -523,10 +637,10 @@ export default function GisMapPage() {
       <aside className={`${panelClass} gis-panel--bl`}>
         <div className="gis-legend__bar" />
         <div className="gis-legend__labels">
-          <span>Low density</span>
-          <span>High</span>
+          <span>Few</span>
+          <span>Many</span>
         </div>
-        <p className="gis-legend__note">Dot size = fire radiative power (MW)</p>
+        <p className="gis-legend__note">Cell color = detections per cell (log scale)</p>
       </aside>
     </div>
   );

@@ -6,7 +6,7 @@ from flask import Blueprint, current_app
 
 from ...db import get_db
 from ...errors import ApiError
-from ...schemas.observations import ObservationQuery
+from ...schemas.observations import GridQuery, ObservationQuery
 from ...serialization import TIME_BASIS, jsonable
 from ...services import observations as service
 from ..common import ok, page_meta, parse_query
@@ -118,3 +118,19 @@ def get_observation(observation_id: str):
             "observation_not_found", f"No observation with id '{observation_id}'.", 404
         )
     return ok(jsonable(row), {"time_basis": TIME_BASIS})
+
+
+@observations_blueprint.get("/observations/grid")
+def observations_grid():
+    """Detections aggregated on a fixed lat/lon grid (for map density layers)."""
+    query = parse_query(GridQuery, default_limit=20000)
+    cells = service.grid_counts(get_db(), query)
+    meta = {
+        "cell_deg": query.cell_deg,
+        "returned": len(cells),
+        "limit": query.limit,
+        "truncated": len(cells) >= query.limit,
+        "total_detections": sum(c["detections"] for c in cells),
+        "time_basis": TIME_BASIS,
+    }
+    return ok(jsonable(cells), meta)

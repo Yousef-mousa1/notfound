@@ -131,3 +131,44 @@ def _nan_to_none(value: Any) -> Any:
     if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
         return None
     return value
+
+
+def grid_counts(database: Database, query: Any) -> list[dict[str, Any]]:
+    """Detections per fixed lat/lon cell (sensors counted separately).
+
+    Cells are aligned to the global grid, so a place keeps the same cell id on
+    every request. FRP is reported as mean/max power only, never summed.
+    """
+    cell = float(query.cell_deg)
+    n_rows = math.ceil(round(180.0 / cell, 6))
+    n_cols = math.ceil(round(360.0 / cell, 6))
+    query_sql, params = sql.grid_counts(
+        query.as_filters(), cell, n_rows, n_cols, query.limit
+    )
+    rows = database.fetch_all(query_sql, params)
+
+    cells: list[dict[str, Any]] = []
+    for row in rows:
+        r = int(row["row_index"])
+        c = int(row["col_index"])
+        min_lat = -90.0 + r * cell
+        min_lon = -180.0 + c * cell
+        max_lat = min(min_lat + cell, 90.0)
+        max_lon = min(min_lon + cell, 180.0)
+        cells.append(
+            {
+                "cell_id": f"g{r:04d}_{c:04d}",
+                "min_lat": round(min_lat, 4),
+                "min_lon": round(min_lon, 4),
+                "max_lat": round(max_lat, 4),
+                "max_lon": round(max_lon, 4),
+                "center_lat": round((min_lat + max_lat) / 2, 4),
+                "center_lon": round((min_lon + max_lon) / 2, 4),
+                "detections": int(row["detections"]),
+                "modis": int(row["modis"]),
+                "viirs": int(row["viirs"]),
+                "mean_frp_mw": row["mean_frp_mw"],
+                "max_frp_mw": row["max_frp_mw"],
+            }
+        )
+    return cells

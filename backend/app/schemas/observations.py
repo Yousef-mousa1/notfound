@@ -137,3 +137,8 @@ class ObservationQuery(ObservationFilters):
             allowed = ", ".join(sorted(SORTABLE_COLUMNS))
             raise ValueError(f"Unsupported sort column. Allowed: {allowed}")
         return value
+class GridQuery(ObservationFilters):
+    """Filters plus grid settings for /observations/grid."""
+
+    cell_deg: float = Field(default=1.0, ge=0.1, le=30.0)
+    limit: int = Field(default=20000, ge=1, le=50000)
