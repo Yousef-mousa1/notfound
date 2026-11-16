@@ -43,7 +43,7 @@ export const monthlyAnalytics = query(`${PREFIX}/analytics/monthly`);
 export const analyticsRegions = query(`${PREFIX}/analytics/regions`);
 export const sensorComparison = query(`${PREFIX}/analytics/sensor-comparison`);
 export const observationStatistics = query(`${PREFIX}/observations/statistics`);
-
+export const observationCountries = query(`${PREFIX}/observations/countries`);
 // ----------------------------------------------------------------- exports
 export const exportHistory = query(`${PREFIX}/exports/history`);
 

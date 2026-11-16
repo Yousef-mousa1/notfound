@@ -12,11 +12,11 @@ import {
   isoDate,
   monthNames,
 } from "./utils/calendarHelpers";
-import { REGION_PRESETS } from "./utils/regionPresets";
 
 import {
   dashboardCalendar,
   monthlyAnalytics,
+  observationCountries,
   observationStatistics,
 } from "../../api/endpoints";
 import Panel from "../../components/common/Panel";
@@ -24,14 +24,19 @@ import { EmptyState, ErrorState, LoadingState } from "../../components/common/Qu
 import { useApi } from "../../hooks/useApi";
 import { decimal, number } from "../../lib/format";
 
-const bboxOf = (regions, code) => {
-  const region = regions.find((item) => item.region === code);
-  if (!region) return undefined;
-  const { min_lon, min_lat, max_lon, max_lat } = region.bbox;
-  return `${min_lon},${min_lat},${max_lon},${max_lat}`;
-};
-
 export default function CalendarPage() {
+  // الدول اللي فيها detections (بعد تشغيل tools/assign_countries.py)
+  const countriesApi = useApi((options) => observationCountries(options), []);
+  const countryOptions = useMemo(
+    () =>
+      (countriesApi.data ?? []).map((item) => ({
+       region: item.code ?? item.iso_a3,
+        label: item.name ?? item.country,
+        detections: item.detections,
+      })),
+    [countriesApi.data]
+  );
+
   // تواريخ أول وآخر detection في الداتا، عشان نعرف الشهور الناقصة
   const statsApi = useApi((options) => observationStatistics(options), []);
   const coverage = statsApi.data?.overall ?? null;
@@ -42,11 +47,11 @@ export default function CalendarPage() {
   const [selection, setSelection] = useState({ year: null, month: null });
   const [selectedDay, setSelectedDay] = useState(null);
 
-  const bbox = region === "all" ? undefined : bboxOf(REGION_PRESETS, region);
+  const country = region === "all" ? undefined : region;
 
   const monthlyApi = useApi(
-    (options) => monthlyAnalytics({ ...options, bbox }),
-    [bbox]
+    (options) => monthlyAnalytics({ ...options, country }),
+    [country]
   );
 
   const series = useMemo(
@@ -152,8 +157,8 @@ export default function CalendarPage() {
 
   const dailyApi = useApi(
     (options) =>
-      dashboardCalendar({ ...options, bbox, start: monthStart, end: monthEnd }),
-    [bbox, monthStart, monthEnd]
+      dashboardCalendar({ ...options, country, start: monthStart, end: monthEnd }),
+    [country, monthStart, monthEnd]
   );
 
   const daily = useMemo(() => {
@@ -223,7 +228,7 @@ export default function CalendarPage() {
       </div>
 
       <CalendarFilters
-        regions={REGION_PRESETS}
+        regions={countryOptions}
         region={region}
         onRegionChange={handleRegionChange}
         startYear={startYear}
@@ -235,6 +240,13 @@ export default function CalendarPage() {
         availableYears={availableYears}
         baselineAvailable={baselineAvailable}
       />
+
+      {countriesApi.error && (
+        <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-500">
+          Country list unavailable ({String(countriesApi.error?.message ?? "error")}). Run
+          <code className="mx-1">python tools/assign_countries.py</code> in the backend, then reload.
+        </p>
+      )}
 
       {monthlyApi.loading && (
         <Panel>
@@ -252,7 +264,7 @@ export default function CalendarPage() {
         <Panel>
           <EmptyState
             title="No monthly activity for this selection"
-            description="Import source files and aggregate them, or choose another region."
+            description="Import source files and aggregate them, or choose another country."
           />
         </Panel>
       )}
@@ -283,7 +295,7 @@ export default function CalendarPage() {
               <Panel>
                 <EmptyState
                   title="No data for this month"
-                  description="The selected month has no stored detections in this region."
+                  description="The selected month has no stored detections for this country."
                 />
               </Panel>
             )}

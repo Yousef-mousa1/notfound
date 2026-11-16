@@ -134,3 +134,32 @@ def observations_grid():
         "time_basis": TIME_BASIS,
     }
     return ok(jsonable(cells), meta)
+
+
+@observations_blueprint.get("/observations/countries")
+def observations_countries():
+    """Countries that have stored detections (for country selectors)."""
+    try:
+        rows, total = service.countries(get_db())
+    except Exception as error:  # الجدول مش موجود لحد ما السكربت يتشغّل
+        if "observation_country" in str(error):
+            raise ApiError(
+                "countries_not_ready",
+                "Country assignment has not been run. Run: python tools/assign_countries.py",
+                409,
+            ) from error
+        raise
+    assigned = sum(int(row["detections"]) for row in rows)
+    return ok(
+        jsonable(rows),
+        {
+            "countries": len(rows),
+            "assigned_detections": assigned,
+            "unassigned_detections": max(total - assigned, 0),
+            "basis": (
+                "Natural Earth 1:50m country polygons (approximate; sea and some "
+                "coastal or disputed points may be unassigned)"
+            ),
+            "time_basis": TIME_BASIS,
+        },
+    )

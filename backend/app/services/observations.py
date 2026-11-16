@@ -172,3 +172,29 @@ def grid_counts(database: Database, query: Any) -> list[dict[str, Any]]:
             }
         )
     return cells
+
+def countries(database: Database) -> tuple[list[dict[str, Any]], int]:
+    """Countries with stored detections, plus the total detection count.
+
+    Reads the `observation_country` table built by tools/assign_countries.py.
+    Returns (rows, total), where total includes observations left unassigned.
+    """
+    rows = database.fetch_all(
+        """
+        SELECT iso_a3, country, COUNT(*) AS detections
+        FROM observation_country
+        GROUP BY iso_a3, country
+        ORDER BY detections DESC, country
+        """,
+        [],
+    )
+    total_rows = database.fetch_all("SELECT COUNT(*) AS total FROM observations", [])
+    total = int(total_rows[0]["total"]) if total_rows else 0
+    return [
+        {
+            "iso_a3": row["iso_a3"],
+            "country": row["country"],
+            "detections": int(row["detections"]),
+        }
+        for row in rows
+    ], total

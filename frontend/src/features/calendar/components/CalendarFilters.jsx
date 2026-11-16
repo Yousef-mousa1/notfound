@@ -18,13 +18,13 @@ export default function CalendarFilters({
     <section className="rounded-xl border border-(--border-color) bg-(--surface) p-5">
       <div className="flex flex-wrap items-end gap-4">
         <div className="min-w-44 flex-1">
-          <label className="mb-2 block text-sm text-(--text-secondary)">Region</label>
+          <label className="mb-2 block text-sm text-(--text-secondary)">Country</label>
           <select
             value={region}
             onChange={(event) => onRegionChange(event.target.value)}
             className={selectClass}
           >
-            <option value="all">All data extent</option>
+            <option value="all">All countries (whole dataset)</option>
             {regions.map((item) => (
               <option key={item.region} value={item.region}>
                 {item.label ?? item.region}
@@ -83,8 +83,8 @@ export default function CalendarFilters({
 
       {region !== "all" && (
         <p className="mt-4 text-[11px] leading-5 text-(--text-secondary)">
-          Regions are approximate bounding boxes: they can overlap and include sea and
-          neighbouring countries.
+          Countries use Natural Earth 1:50m boundaries (approximate). Detections at sea, or
+          far from any coast, are not assigned to a country.
         </p>
       )}
 

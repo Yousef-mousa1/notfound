@@ -73,6 +73,11 @@ class ObservationFilters(BaseModel):
         description="min_lon,min_lat,max_lon,max_lat in WGS84 degrees.",
     )
 
+    country: str | None = Field(
+        default=None,
+        description="Country code (ADM0_A3), see /observations/countries.",
+    )
+
     @field_validator("start", mode="before")
     @classmethod
     def _parse_start(cls, value: object) -> datetime | None:
@@ -87,6 +92,15 @@ class ObservationFilters(BaseModel):
     @classmethod
     def _check_bbox(cls, value: str | None) -> str | None:
         return _parse_bbox(value)
+    @field_validator("country")
+    @classmethod
+    def _check_country(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        code = value.strip().upper()
+        if not (2 <= len(code) <= 4 and code.isalnum()):
+            raise ValueError("country must be a 3-letter code such as EGY.")
+        return code
 
     @model_validator(mode="after")
     def _check_ranges(self) -> "ObservationFilters":
@@ -118,6 +132,7 @@ class ObservationFilters(BaseModel):
             "confidence_class": self.confidence_class,
             "source_id": self.source_id,
             "bbox": self.bbox_tuple,
+            "country": self.country,
         }
 
 

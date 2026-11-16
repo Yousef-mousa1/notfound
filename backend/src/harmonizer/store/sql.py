@@ -72,7 +72,13 @@ def build_where(filters: dict[str, Any]) -> tuple[str, list[Any]]:
         min_lon, min_lat, max_lon, max_lat = bbox
         clauses.append("lon BETWEEN ? AND ? AND lat BETWEEN ? AND ?")
         params.extend([min_lon, max_lon, min_lat, max_lat])
-
+    country = filters.get("country")
+    if country is not None:
+        clauses.append(
+            "CAST(observation_id AS VARCHAR) IN "
+            "(SELECT observation_id FROM observation_country WHERE iso_a3 = ?)"
+        )
+        params.append(country)
     return ("WHERE " + " AND ".join(clauses) if clauses else ""), params
 
 
@@ -859,3 +865,22 @@ def grid_counts(
         LIMIT ?
     """
     return sql, [cell_deg, n_rows - 1, cell_deg, n_cols - 1, *params, limit]
+
+
+def country_counts() -> tuple[str, list[Any]]:
+    """Detections per country (needs the observation_country table)."""
+    return (
+        """
+        SELECT
+            c.iso_a3 AS code,
+            c.country AS name,
+            count(*) AS detections,
+            count(*) FILTER (WHERE o.sensor = 'modis') AS modis,
+            count(*) FILTER (WHERE o.sensor = 'viirs') AS viirs
+        FROM observation_country c
+        JOIN observations o ON CAST(o.observation_id AS VARCHAR) = c.observation_id
+        GROUP BY c.iso_a3, c.country
+        ORDER BY c.country
+        """,
+        [],
+    )

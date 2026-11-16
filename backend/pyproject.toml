@@ -17,8 +17,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
-
+dev = ["pytest>=8.0", "shapely>=2.0", "certifi"]
 [tool.setuptools.packages.find]
 where = ["src"]
 
