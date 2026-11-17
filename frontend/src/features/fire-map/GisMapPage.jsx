@@ -3,6 +3,8 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./gis.css";
 
+const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "");
+
 const GRID_ID = "grid";
 const POINTS_ID = "fires";
 const START_VIEW = { center: [20, 12], zoom: 0.9 };
@@ -138,7 +140,7 @@ function viewportBbox(map) {
 }
 
 async function fetchJson(url, signal) {
-  const res = await fetch(url, { signal });
+  const res = await fetch(`${API_BASE}${url}`, { signal });
   if (!res.ok) {
     let detail = "";
     try {
