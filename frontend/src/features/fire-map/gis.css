@@ -147,6 +147,10 @@
   left: 16px;
   width: 210px;
 }
+/* النسخة المدمجة من الـlegend جوّه لوحة التحكم — مخفية على الديسكتوب. */
+.gis-legend-inline {
+  display: none;
+}
 .gis-panel__title {
   display: flex;
   align-items: center;
@@ -393,5 +397,31 @@
   .gis-intro,
   .gis-panel {
     transition: none;
+  }
+}
+
+/* ---------- Mobile: one scrollable panel, no overlap ---------- */
+@media (max-width: 640px) {
+  /* لوحة التحكم: قابلة للتمرير، أطول ما تسمح به الخريطة */
+  .gis-panel--tl {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    width: auto;
+    max-height: calc(100% - 20px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* أخفي الـ legend السفلي عشان ما يركبش على زرار الـ backcast */
+  .gis-panel--bl {
+    display: none;
+  }
+  /* أظهر النسخة المدمجة جوّه لوحة التحكم */
+  .gis-legend-inline {
+    display: block;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(148, 163, 184, 0.18);
   }
 }

@@ -938,6 +938,16 @@ export default function GisMapPage() {
         <button type="button" className="gis-link" onClick={handleReplay}>
           ↻ Replay intro
         </button>
+
+        {/* نسخة مدمجة من الـlegend جوّه اللوحة — موبايل بس ()--bl مخفي هناك) */}
+        <div className="gis-legend-inline">
+          <div className="gis-legend__bar" />
+          <div className="gis-legend__labels"><span>Few</span><span>Many</span></div>
+          <p className="gis-legend__note">Warm cells = 2025 detections (log scale)</p>
+          <p className="gis-legend__note" style={{ color: "#c4b5fd" }}>
+            Purple cells = 2005 model backcast (estimate, not detections)
+          </p>
+        </div>
       </aside>
 
       <aside className={`${panelClass} gis-panel--bl`}>
