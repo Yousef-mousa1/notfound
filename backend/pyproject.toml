@@ -22,7 +22,7 @@ dev = ["pytest>=8.0", "shapely>=2.0", "certifi"]
 where = ["src"]
 
 [tool.vercel]
-entrypoint = "vercel_wsgi:application"
+entrypoint = "vercel_wsgi:app"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
