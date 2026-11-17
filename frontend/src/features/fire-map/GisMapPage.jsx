@@ -895,6 +895,27 @@ export default function GisMapPage() {
 
         <div className="gis-sep" />
 
+        {/* Backcast 2005 — أهم زرار على الموبايل، فوق عشان يوصل له من غير سكرول */}
+        <label className="gis-switch" title="Model backcast for 2005 — estimates, not FIRMS detections">
+          <input type="checkbox" checked={showBackcast} onChange={(e) => setShowBackcast(e.target.checked)} />
+          <span className="gis-switch__ui" />
+          <span className="gis-swatch" style={{ background: "#a78bfa" }} />
+          Backcast 2005 (estimate)
+        </label>
+        {showBackcast && (
+          <p className="gis-legend__note" style={{ color: "#c4b5fd" }}>
+            {backcastStatus.state === "loading"
+              ? "Loading backcast…"
+              : backcastStatus.state === "error"
+                ? `Backcast failed: ${backcastStatus.message}`
+                : backcastStatus.state === "ready"
+                  ? `${backcastStatus.cells.toLocaleString()} estimated cells · NOT detections`
+                  : ""}
+          </p>
+        )}
+
+        <div className="gis-sep" />
+
         <label className="gis-switch">
           <input type="checkbox" checked={showModis} onChange={(e) => setShowModis(e.target.checked)} />
           <span className="gis-switch__ui" />
@@ -920,26 +941,6 @@ export default function GisMapPage() {
           <input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} />
           <span className="gis-switch__ui" /> Country names
         </label>
-
-        <div className="gis-sep" />
-
-        <label className="gis-switch" title="Model backcast for 2005 — estimates, not FIRMS detections">
-          <input type="checkbox" checked={showBackcast} onChange={(e) => setShowBackcast(e.target.checked)} />
-          <span className="gis-switch__ui" />
-          <span className="gis-swatch" style={{ background: "#a78bfa" }} />
-          Backcast 2005 (estimate)
-        </label>
-        {showBackcast && (
-          <p className="gis-legend__note" style={{ color: "#c4b5fd" }}>
-            {backcastStatus.state === "loading"
-              ? "Loading backcast…"
-              : backcastStatus.state === "error"
-                ? `Backcast failed: ${backcastStatus.message}`
-                : backcastStatus.state === "ready"
-                  ? `${backcastStatus.cells.toLocaleString()} estimated cells · NOT detections`
-                  : ""}
-          </p>
-        )}
 
         <div className="gis-sep" />
         <p className="gis-status" data-state={status.state}>{statusText}</p>
