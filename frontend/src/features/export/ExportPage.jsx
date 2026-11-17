@@ -1,36 +1,42 @@
 import { useState } from "react";
-import { CheckCircle2, Download, FileDown, Loader2, XCircle } from "lucide-react";
+import { CheckCircle2, Download, FileDown, Info, Loader2, XCircle } from "lucide-react";
 
-import { createExport, downloadUrl, exportHistory } from "../../api/endpoints";
-import Badge from "../../components/common/Badge";
-import Panel from "../../components/common/Panel";
-import { EmptyState, ErrorState, LoadingState } from "../../components/common/QueryState";
-import { useApi } from "../../hooks/useApi";
-import { dateTime, number } from "../../lib/format";
+import { createExport } from "../../api/endpoints";
+
+// Vercel Functions cap a response at 4.5 MB. Exports beyond that cannot be
+// downloaded in one stateless request, so they are disabled in this demo
+// rather than failing with a 413 after the user clicks. Row counts come from
+// the shipped read-only snapshot (verified 2026-11-17).
+const DEMO_LIMIT_NOTE =
+  "Not available in the demo: this export exceeds the 4.5 MB download limit of the free host.";
 
 const EXPORT_ACTIONS = [
   {
     key: "observations-all",
     title: "All observations",
     description: "Every MODIS + VIIRS detection in the store, with a metadata sidecar.",
+    demoLimit: "261,415 rows (~37 MB)",
     request: () => createExport("observations", {}),
   },
   {
     key: "observations-modis",
     title: "MODIS observations",
     description: "Only MODIS detections (Terra + Aqua).",
+    demoLimit: "131,653 rows (~18 MB)",
     request: () => createExport("observations", { sensor: "modis" }),
   },
   {
     key: "observations-viirs",
     title: "VIIRS observations",
     description: "Only VIIRS detections (S-NPP).",
+    demoLimit: "129,762 rows (~18 MB)",
     request: () => createExport("observations", { sensor: "viirs" }),
   },
   {
     key: "harmonized",
     title: "Harmonized cell-days",
     description: "Latest harmonization run: one row per grid cell per day.",
+    demoLimit: "219,986 rows (~30 MB)",
     request: () => createExport("harmonized-data", {}),
   },
   {
@@ -38,6 +44,7 @@ const EXPORT_ACTIONS = [
     title: "Harmonized estimates (model)",
     description:
       "Full model series: 2013/2024/2025 observed + backcasts, both scales separate. Model-produced, not FIRMS detections.",
+    demoLimit: "813,254 rows (~80 MB)",
     request: () => createExport("estimate-series", {}),
   },
   {
@@ -45,6 +52,7 @@ const EXPORT_ACTIONS = [
     title: "VIIRS-harmonized estimates",
     description:
       "Only the coverage-corrected VIIRS scale of the model series.",
+    demoLimit: "406,627 rows (~40 MB)",
     request: () => createExport("estimate-series", { scale: "viirs_harmonized" }),
   },
   {
@@ -62,22 +70,20 @@ const EXPORT_ACTIONS = [
 ];
 
 export default function ExportPage() {
-  const history = useApi((options) => exportHistory({ ...options, limit: 25 }), []);
   const [running, setRunning] = useState(null);
   const [feedback, setFeedback] = useState({ key: null, type: null, message: "" });
 
   async function handleExport(action) {
     setRunning(action.key);
-    setFeedback({ key: action.key, type: null, message: "" });
+    setFeedback({ key: action.key, type: null, message: "Preparing your file…" });
 
     try {
-      const record = await action.request();
+      const result = await action.request();
       setFeedback({
         key: action.key,
         type: "success",
-        message: `Export ${record.export_id} created (${number(record.row_count)} rows).`,
+        message: `Downloaded ${result.fileName}. The ZIP also contains the metadata and limitations.`,
       });
-      history.reload();
     } catch (error) {
       setFeedback({ key: action.key, type: "error", message: error.message });
     } finally {
@@ -90,7 +96,9 @@ export default function ExportPage() {
       <div>
         <h2 className="text-2xl font-bold">Export center</h2>
         <p className="mt-1 text-sm text-(--text-secondary)">
-          Every export writes new files and a metadata sidecar; stored data is never modified.
+          Press Export and your file downloads immediately. Each ZIP contains the
+          data plus a metadata file with the inputs, steps and known limitations.
+          Nothing is saved to an export history.
         </p>
       </div>
 
@@ -99,6 +107,7 @@ export default function ExportPage() {
           const isRunning = running === action.key;
           const isSuccess = feedback.key === action.key && feedback.type === "success";
           const isError = feedback.key === action.key && feedback.type === "error";
+          const unavailable = Boolean(action.demoLimit);
 
           return (
             <div
@@ -118,13 +127,22 @@ export default function ExportPage() {
               <div className="mt-4">
                 <button
                   type="button"
-                  disabled={isRunning}
+                  disabled={unavailable || isRunning}
                   onClick={() => handleExport(action)}
                   className="flex w-full items-center justify-center gap-2 rounded-lg bg-orange-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isRunning ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-                  {isRunning ? "Creating export…" : "Create export"}
+                  {unavailable ? <Info size={14} /> : isRunning ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                  {unavailable ? "Unavailable in demo" : isRunning ? "Preparing file…" : "Export"}
                 </button>
+
+                {unavailable ? (
+                  <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-4 text-(--text-secondary)">
+                    <Info size={13} className="mt-0.5 shrink-0" />
+                    <span>
+                      {DEMO_LIMIT_NOTE} <strong>{action.demoLimit}</strong>
+                    </span>
+                  </p>
+                ) : null}
 
                 {feedback.key === action.key && feedback.message && (
                   <p
@@ -140,79 +158,6 @@ export default function ExportPage() {
           );
         })}
       </section>
-
-      <Panel
-        title="Export history"
-        description="Latest 25 exports with their files and download links."
-        action={
-          <button
-            type="button"
-            onClick={history.reload}
-            className="text-xs font-medium text-orange-500 hover:text-orange-400"
-          >
-            Refresh
-          </button>
-        }
-      >
-        {history.loading && <LoadingState label="Loading export history…" />}
-        {history.error && <ErrorState error={history.error} onRetry={history.reload} />}
-
-        {!history.loading && !history.error && (history.data ?? []).length === 0 && (
-          <EmptyState
-            title="No exports yet"
-            description="Create one of the exports above; it will appear here with a download link."
-          />
-        )}
-
-        {(history.data ?? []).length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs leading-5 [&_td]:pr-4 [&_th]:pr-4 [&_td:last-child]:pr-0 [&_th:last-child]:pr-0">
-              <thead className="text-(--text-secondary)">
-                <tr className="border-b border-(--border-color)">
-                  <th className="py-2 font-medium">Created</th>
-                  <th className="py-2 font-medium">Kind</th>
-                  <th className="py-2 font-medium">Status</th>
-                  <th className="py-2 text-right font-medium">Rows</th>
-                  <th className="py-2 font-medium">Files</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(history.data ?? []).map((record) => (
-                  <tr key={record.export_id} className="border-b border-(--border-color)/60 align-top last:border-0">
-                    <td className="whitespace-nowrap py-2">{dateTime(record.created_at)}</td>
-                    <td className="py-2">{record.kind}</td>
-                    <td className="py-2">
-                      <Badge variant={record.status === "succeeded" ? "neutral" : "extreme"}>
-                        {record.status}
-                      </Badge>
-                    </td>
-                    <td className="py-2 text-right">{number(record.row_count)}</td>
-                    <td className="py-2">
-                      <ul className="space-y-1">
-                        {(record.files ?? []).map((file) => (
-                          <li key={file.name}>
-                            <a
-                              href={downloadUrl(record, file.name)}
-                              className="inline-flex items-center gap-1 whitespace-nowrap text-orange-500 hover:text-orange-400"
-                              download
-                            >
-                              <Download size={12} />
-                              {file.name}
-                              <span className="text-(--text-secondary)">
-                                ({(file.byte_size / 1024).toFixed(0)} KB)
-                              </span>
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Panel>
     </div>
   );
 }

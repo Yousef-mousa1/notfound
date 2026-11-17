@@ -5,7 +5,7 @@
 // useApi). `signal` is routed to fetch; every other field becomes a query
 // parameter.
 
-import { get, post } from "./client";
+import { get, post, postBlob } from "./client";
 
 const PREFIX = "/api/v1";
 
@@ -39,14 +39,19 @@ export const sensorComparison = query(`${PREFIX}/analytics/sensor-comparison`);
 export const observationStatistics = query(`${PREFIX}/observations/statistics`);
 export const observationCountries = query(`${PREFIX}/observations/countries`);
 // ----------------------------------------------------------------- exports
-export const exportHistory = query(`${PREFIX}/exports/history`);
-
+// Stateless export: the create POST returns the file bytes directly (a ZIP
+// containing the data + metadata). We hand them to the browser so pressing
+// Export downloads immediately. There is no record and no history.
 export const createExport = (kind, body = {}) =>
-  unwrap(post(`${PREFIX}/exports/${kind}`, body));
-
-export const downloadUrl = (record, fileName) => {
-  if (!record?.export_id) return null;
-  const params = new URLSearchParams({ download: "true" });
-  if (fileName) params.set("file", fileName);
-  return `${PREFIX}/exports/${record.export_id}?${params.toString()}`;
-};
+  postBlob(`${PREFIX}/exports/${kind}`, body).then((result) => {
+    const url = URL.createObjectURL(result.blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = result.fileName || `${kind}.zip`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    // Revoke only after the browser has started the download.
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    return { fileName: link.download, ...result };
+  });

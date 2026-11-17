@@ -100,3 +100,53 @@ export const get = (path, options) => request(path, options);
 
 export const post = (path, body, options) =>
   request(path, { ...options, method: "POST", body });
+
+// POST that returns a binary download. Errors are parsed as JSON first so a
+// failed export shows the API message instead of downloading a corrupt file.
+// Exports can exceed the generic 30s timeout, so they get a longer default.
+export async function postBlob(path, body, { timeoutMs = 180000 } = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(buildUrl(path), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const payload = await parseBody(response);
+      const error = payload?.error ?? {};
+      throw new ApiError(
+        error.message ?? `Request failed with status ${response.status}.`,
+        {
+          status: response.status,
+          code: error.code ?? "http_error",
+          details: error.details ?? payload,
+        }
+      );
+    }
+
+    const disposition = response.headers.get("Content-Disposition") ?? "";
+    const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+    return {
+      blob: await response.blob(),
+      fileName: match?.[1] ?? "export.zip",
+      exportId: response.headers.get("X-Export-Id"),
+    };
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    if (error?.name === "AbortError") {
+      throw new ApiError("The export timed out.", { code: "aborted" });
+    }
+    throw new ApiError("Cannot reach the API to create the export.", {
+      status: 0,
+      code: "network_error",
+      details: error?.message,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
