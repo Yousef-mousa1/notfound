@@ -6,6 +6,10 @@ record and link to the files; ``?download=true`` returns the file itself.
 
 from __future__ import annotations
 
+import io
+import zipfile
+from pathlib import Path
+
 from flask import Blueprint, current_app, send_file, url_for
 
 from ...db import get_db
@@ -60,15 +64,52 @@ def _meta(note: str) -> dict:
     }
 
 
+def _stateless(config: dict) -> bool:
+    """True on read-only hosts that must stream the file in the create response."""
+    return bool((config.get("exports") or {}).get("stateless", False))
+
+
+def _zip_response(record: dict) -> "Response":
+    """Stream every export file as one ZIP attachment, built in memory.
+
+    Vercel Functions do not share /tmp between invocations, so a separate
+    download request cannot rely on a file written by the create request.
+    Packaging in the same request removes that dependency entirely. The
+    metadata sidecar (with limitations) is included alongside the data.
+    """
+    buffer = io.BytesIO()
+    root = Path(record["directory"])
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for item in record.get("files") or []:
+            path = (root / item["name"]).resolve()
+            if path.is_file():
+                archive.write(path, arcname=item["name"])
+    buffer.seek(0)
+    response = send_file(
+        buffer,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name=f"{record['export_id']}.zip",
+    )
+    response.headers["X-Export-Id"] = record["export_id"]
+    return response
+
+
+def _created(record: dict, config: dict, note: str):
+    """Return the file directly (stateless) or the JSON record (stateful)."""
+    if _stateless(config):
+        return _zip_response(record)
+    return ok(_with_links(record), _meta(note), 201)
+
+
 @exports_blueprint.post("/exports/csv")
 def export_csv():
     """Create a generic CSV export of observations or one stored run."""
     request = parse_body(CsvExportRequest)
-    record = service.create_csv(get_db(), current_app.config["HARMONIZER"], request)
-    return ok(
-        _with_links(record),
-        _meta("CSV export created; stored data was not modified."),
-        201,
+    config = current_app.config["HARMONIZER"]
+    record = service.create_csv(get_db(), config, request)
+    return _created(
+        record, config, "CSV export created; stored data was not modified."
     )
 
 
@@ -76,16 +117,13 @@ def export_csv():
 def export_observations():
     """Export filtered observations to CSV plus a metadata sidecar."""
     request = parse_body(ObservationExportRequest)
-    record = service.create_observations(
-        get_db(), current_app.config["HARMONIZER"], request
-    )
-    return ok(
-        _with_links(record),
-        _meta(
-            "Observation export contains detected hot spots only; absence of a row is "
-            "not evidence of no fire."
-        ),
-        201,
+    config = current_app.config["HARMONIZER"]
+    record = service.create_observations(get_db(), config, request)
+    return _created(
+        record,
+        config,
+        "Observation export contains detected hot spots only; absence of a row is "
+        "not evidence of no fire.",
     )
 
 
@@ -93,16 +131,13 @@ def export_observations():
 def export_harmonized():
     """Export a harmonization run's per-cell rows plus metadata."""
     request = parse_body(HarmonizedExportRequest)
-    record = service.create_harmonized(
-        get_db(), current_app.config["HARMONIZER"], request
-    )
-    return ok(
-        _with_links(record),
-        _meta(
-            "Harmonization is a cross-sensor mapping, not a physical correction; "
-            "MODIS is not ground truth."
-        ),
-        201,
+    config = current_app.config["HARMONIZER"]
+    record = service.create_harmonized(get_db(), config, request)
+    return _created(
+        record,
+        config,
+        "Harmonization is a cross-sensor mapping, not a physical correction; "
+        "MODIS is not ground truth.",
     )
 
 
@@ -110,16 +145,13 @@ def export_harmonized():
 def export_estimate_series():
     """Export the model-produced harmonized estimate series plus metadata."""
     request = parse_body(EstimateExportRequest)
-    record = service.create_estimates(
-        get_db(), current_app.config["HARMONIZER"], request
-    )
-    return ok(
-        _with_links(record),
-        _meta(
-            "Model-produced estimates, including backcasts; these are not FIRMS "
-            "detections and no row is absent because there was no fire."
-        ),
-        201,
+    config = current_app.config["HARMONIZER"]
+    record = service.create_estimates(get_db(), config, request)
+    return _created(
+        record,
+        config,
+        "Model-produced estimates, including backcasts; these are not FIRMS "
+        "detections and no row is absent because there was no fire.",
     )
 
 
@@ -127,13 +159,12 @@ def export_estimate_series():
 def export_validation_report():
     """Export a validation run as a JSON report, optionally with its pairs."""
     request = parse_body(ValidationReportRequest)
-    record = service.create_validation_report(
-        get_db(), current_app.config["HARMONIZER"], request
-    )
-    return ok(
-        _with_links(record),
-        _meta("Validation results are cross-sensor consistency, never accuracy."),
-        201,
+    config = current_app.config["HARMONIZER"]
+    record = service.create_validation_report(get_db(), config, request)
+    return _created(
+        record,
+        config,
+        "Validation results are cross-sensor consistency, never accuracy.",
     )
 
 
@@ -142,7 +173,8 @@ def export_history():
     """List export records, newest first."""
     query = parse_query(ExportHistoryQuery)
     records, total = service.history(
-        get_db(), query.kind, query.status, query.limit, query.offset
+        get_db(), query.kind, query.status, query.limit, query.offset,
+        current_app.config["HARMONIZER"],
     )
     return ok(
         [_with_links(record) for record in records],
@@ -160,7 +192,7 @@ def get_export(export_id: str):
     config = current_app.config["HARMONIZER"]
 
     if not query.download:
-        record = service.get_export(get_db(), export_id)
+        record = service.get_export(get_db(), export_id, config)
         if record is None:
             raise ApiError(
                 "export_not_found", f"No export with id '{export_id}'.", 404

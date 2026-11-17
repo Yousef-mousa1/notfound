@@ -115,11 +115,23 @@ def _new_export_id() -> str:
 
 
 def _root(config: dict[str, Any]) -> Path:
-    """Directory that holds every export (created on demand)."""
+    """Directory that holds every export (created on demand).
+
+    On read-only hosts (e.g. Vercel Functions) ``exports.root_override``
+    points at a writable location such as ``/tmp``.
+    """
+    override = (config.get("exports") or {}).get("root_override")
+    if override:
+        return Path(override)
     try:
         return resolve_path(config, "paths", "exports")
     except (KeyError, ValueError):
         return resolve_path(config, "paths", "processed") / "exports"
+
+
+def _stateless(config: dict[str, Any]) -> bool:
+    """Whether to skip the exports-table INSERT (read-only deployments)."""
+    return bool((config.get("exports") or {}).get("stateless", False))
 
 
 def _max_rows(config: dict[str, Any]) -> int:
@@ -187,6 +199,32 @@ def jsonable_json(payload: Any) -> str:
     return json.dumps(payload, default=str)
 
 
+def _record_path(config: dict[str, Any], export_id: str) -> Path:
+    """Where a stateless record is persisted on a read-only host."""
+    return _root(config) / export_id / "record.json"
+
+
+def _write_record(directory: Path, stored: dict[str, Any]) -> None:
+    """Persist a stateless export record as JSON next to its files."""
+    (directory / "record.json").write_text(
+        jsonable_json(stored), encoding="utf-8"
+    )
+
+
+def _read_record(config: dict[str, Any], export_id: str) -> dict[str, Any] | None:
+    path = _record_path(config, export_id)
+    if not path.is_file():
+        return None
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    return {
+        **payload,
+        "params": maybe_json(payload.get("params")),
+        "metadata": maybe_json(payload.get("metadata")),
+        "files": payload.get("files") or [],
+        "file_available": True,
+    }
+
+
 def _decode(row: dict[str, Any]) -> dict[str, Any]:
     metadata = maybe_json(row.get("metadata"))
     return {
@@ -201,8 +239,13 @@ def _decode(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def get_export(database: Database, export_id: str) -> dict[str, Any] | None:
+def get_export(
+    database: Database, export_id: str, config: dict[str, Any] | None = None
+) -> dict[str, Any] | None:
     """Return one export record, or ``None``."""
+    # Stateless records live as JSON on the read-only host; the DB is not used.
+    if config is not None and _stateless(config):
+        return _read_record(config, export_id)
     query_sql, params = sql.export_row(export_id)
     row = database.fetch_one(query_sql, params)
     return None if row is None else _decode(row)
@@ -214,8 +257,12 @@ def history(
     status: str | None,
     limit: int,
     offset: int,
+    config: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
     """Page through export records, newest first."""
+    # Stateless mode keeps no persistent history table.
+    if config is not None and _stateless(config):
+        return [], 0
     query_sql, params, count_params = sql.export_list(kind, status, limit, offset)
     clauses: list[str] = []
     if kind:
@@ -281,6 +328,21 @@ def _execute(
         }
         metadata_file = write_json(metadata, directory / "metadata.json")
         stored = {**metadata, "files": [*data_files, metadata_file]}
+        if _stateless(config):
+            # Read-only host: persist the record as JSON next to the files
+            # instead of INSERTing into the bundled snapshot.
+            record = {
+                "export_id": export_id,
+                "kind": kind,
+                "source": source,
+                "status": "succeeded",
+                "params": params,
+                "row_count": row_count,
+                "directory": str(directory),
+                **stored,
+            }
+            _write_record(directory, record)
+            return record
         _insert_record(
             database,
             export_id=export_id,
@@ -297,19 +359,20 @@ def _execute(
         raise
     except Exception as error:
         shutil.rmtree(directory, ignore_errors=True)
-        _insert_record(
-            database,
-            export_id=export_id,
-            kind=kind,
-            source=source,
-            params=params,
-            run_id=run_id,
-            row_count=None,
-            directory=directory,
-            metadata=None,
-            status="failed",
-            error=str(error),
-        )
+        if not _stateless(config):
+            _insert_record(
+                database,
+                export_id=export_id,
+                kind=kind,
+                source=source,
+                params=params,
+                run_id=run_id,
+                row_count=None,
+                directory=directory,
+                metadata=None,
+                status="failed",
+                error=str(error),
+            )
         raise
 
     record = get_export(database, export_id)
@@ -691,7 +754,7 @@ def resolve_file(
     database: Database, config: dict[str, Any], export_id: str, file_name: str | None
 ) -> tuple[dict[str, Any], Path]:
     """Resolve a downloadable file and refuse anything outside the export root."""
-    record = get_export(database, export_id)
+    record = get_export(database, export_id, config)
     if record is None:
         raise ApiError(
             "export_not_found", f"No export with id '{export_id}'.", 404

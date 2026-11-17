@@ -14,6 +14,11 @@ paths:
 exports:
   max_rows: 500000
   estimate_max_rows: 1000000
+  # Vercel Functions have a read-only project filesystem but a writable /tmp.
+  # Stateless exports write there and return the file directly, without an
+  # INSERT into the read-only DuckDB snapshot.
+  root_override: /tmp/pyroscope-exports
+  stateless: true
 storage:
   duckdb_path: data/processed/pyroscope_trimmed.duckdb
   read_only: true
