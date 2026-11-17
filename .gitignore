@@ -25,6 +25,8 @@ dist/
 .env
 .env.*
 !.env.example
+# Public API origin for the Vite production build (not a secret).
+!frontend/.env.production
 
 # ---- OS / editor ----
 .DS_Store
