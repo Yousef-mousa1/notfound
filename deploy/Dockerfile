@@ -12,6 +12,10 @@ WORKDIR /app
 COPY backend /app/backend
 COPY modeling/outputs /app/modeling/outputs
 
+# DuckDB snapshot is too large for git; fetch it from a GitHub release at build time.
+ADD https://github.com/Yousef-mousa1/notfound/releases/download/pyroscope-db-v1/pyroscope.duckdb \
+    /app/backend/data/processed/pyroscope.duckdb
+
 RUN python -m pip install --no-cache-dir -e /app/backend gunicorn \
  && mkdir -p /app/backend/data/processed/exports \
              /app/backend/data/interim/uploads \
