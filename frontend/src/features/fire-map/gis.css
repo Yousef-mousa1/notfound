@@ -439,4 +439,20 @@
     padding-top: 10px;
     border-top: 1px solid rgba(148, 163, 184, 0.18);
   }
+
+  /* الـ popup: عرض وارتفاع محدودين + اسكرول داخلي عشان ما يطلعش بره شاشة الموبايل */
+  .gis-wrap .maplibregl-popup-content {
+    max-width: calc(100vw - 40px);
+    max-height: 45vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 22px 12px 10px;
+  }
+  .gis-popup {
+    min-width: 0;
+    font-size: 11px;
+  }
+  .gis-popup div {
+    gap: 10px;
+  }
 }
