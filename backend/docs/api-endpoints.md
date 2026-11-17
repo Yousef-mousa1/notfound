@@ -12,8 +12,12 @@ the earlier "81" note in this project was a miscount.
 - Error envelope: `{"error": {"code", "message", "details"?}}` — never HTML.
 - Pagination: `limit` (1–1000, default from config), `offset`; `meta` carries
   `total` and `returned`.
-- Timestamps: ISO 8601 with `Z`. The time basis is **UTC (assumed)** and is
-  returned as `meta.time_basis` until Phase 03 verifies the source timezone.
+- Timestamps: ISO 8601 with `Z`. The time basis is **UTC (verified against FIRMS
+  documentation on 2026-11-17)** and is returned as `meta.time_basis`.
+- Confidence classes: VIIRS `l/n/h` follow official FIRMS classes; MODIS numeric
+  bands (0–29 / 30–79 / 80–100) are **heuristic** (FIRMS publishes the classes but
+  no numeric cut-offs). `POST /processing/normalize?apply_confidence=true` echoes
+  the `method` and `source` for each sensor.
 - FRP is instantaneous power (MW). It is never summed into "energy".
 - `GET /demo` (outside `/api/v1`) is a static page that only calls the endpoints
   below; it is not counted among the 83 API endpoints and computes nothing.
@@ -74,6 +78,17 @@ Notes:
 - `clean` flags are provisional until Phase 03 verifies the official definitions.
 - `aggregate` / `features` keep MODIS and VIIRS rows separate and never sum FRP.
 
+## Map point inspection — `/api/v1/dashboard/inspect` ✅
+
+`GET /dashboard/inspect?lat=&lon=&radius_km=10&limit=20` answers a map click from
+**two independent stored sources**: recorded detections within a geodesic radius
+(`observations`, count + last date + bounded nearest sample) and the model
+estimate for the 1-degree block containing the point (`estimates`, separate run).
+The two are never summed. The response note states explicitly that no detection
+record is **not** proof that no fire occurred. Clicking a detection dot or a grid
+cell still shows the existing, more precise popup; this endpoint only handles
+empty-space clicks.
+
 ## 4. Sensor Harmonization — `/api/v1/harmonization` — Slice C ✅
 
 | Method | Endpoint | Status |
@@ -117,8 +132,10 @@ Notes:
 | GET | `/validation/spatial` | ✅ implemented (buckets by geodesic distance) |
 
 Notes:
-- There is no independent reference dataset, so no endpoint calls these numbers
-  accuracy. Every response carries `n_pairs` and a `limitations` list.
+- These endpoints compare MODIS to VIIRS on matched pairs; they do not call the
+  numbers accuracy against true fire occurrence. Held-out reference validation
+  against observed VIIRS for 2013 and 2024 is a separate offline modeling step.
+  Every response carries `n_pairs` and a `limitations` list.
 - Metrics are reported on `log10(FRP)` (primary) and raw MW. Raw-MW RMSE is
   flagged as tail-sensitive.
 - Metrics default to the latest successful run when `run_id` is omitted.

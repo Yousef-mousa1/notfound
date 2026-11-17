@@ -7,6 +7,7 @@ import MainLayout from "../components/layout/MainLayout";
 const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage"));
 const FireMapPage = lazy(() => import("../features/fire-map/GisMapPage"));
 const CalendarPage = lazy(() => import("../features/calendar/CalendarPage"));
+const HarmonizedCalendarPage = lazy(() => import("../features/harmonized/HarmonizedCalendarPage"));
 const AnalyticsPage = lazy(() => import("../features/analytics/AnalyticsPage"));
 const ExportPage = lazy(() => import("../features/export/ExportPage"));
 
@@ -28,6 +29,7 @@ const router = createBrowserRouter([
       { index: true, element: page(<DashboardPage />) },
       { path: "map", element: page(<FireMapPage />) },
       { path: "calendar", element: page(<CalendarPage />) },
+      { path: "harmonized", element: page(<HarmonizedCalendarPage />) },
       { path: "analytics", element: page(<AnalyticsPage />) },
       { path: "export", element: page(<ExportPage />) },
     ],

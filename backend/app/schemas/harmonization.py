@@ -9,8 +9,6 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .common import PageQuery
 from .observations import ObservationFilters
 
-METHODS = ("none", "ratio", "linear-regression", "quantile-mapping")
-
 
 class HarmonizationRunRequest(ObservationFilters):
     """Run a harmonization over a grid with a chosen calibration."""

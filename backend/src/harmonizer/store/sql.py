@@ -723,6 +723,49 @@ def observations_export(
     )
 
 
+#: Columns written by a model-estimate export, in a fixed order.
+#: These are model-produced estimates, never FIRMS detections.
+ESTIMATE_EXPORT_COLUMNS: tuple[str, ...] = (
+    "run_id",
+    "level",
+    "entity_id",
+    "period",
+    "scale",
+    "value",
+    "low",
+    "high",
+    "centroid_lat",
+    "centroid_lon",
+    "grid_degrees",
+    "is_estimate",
+    "coverage_corrected",
+    "scale_factor",
+    "baseline",
+    "model",
+)
+
+
+def estimates_export(
+    run_id: str, scale: str | None = None
+) -> tuple[str, list[Any]]:
+    """Every stored estimate row of a model run, in deterministic order.
+
+    An optional ``scale`` keeps the two product scales (viirs_harmonized and
+    modis_raw) separable; they are never merged into one detection count.
+    """
+    columns = ", ".join(ESTIMATE_EXPORT_COLUMNS)
+    params: list[Any] = [run_id]
+    scale_clause = ""
+    if scale is not None:
+        scale_clause = " AND scale = ?"
+        params.append(scale)
+    return (
+        f"SELECT {columns} FROM estimates WHERE run_id = ?{scale_clause} "
+        "ORDER BY period, entity_id, scale",
+        params,
+    )
+
+
 def harmonization_export(run_id: str) -> tuple[str, list[Any]]:
     """Every per-cell row of a harmonization run, in deterministic order."""
     return (
@@ -865,22 +908,3 @@ def grid_counts(
         LIMIT ?
     """
     return sql, [cell_deg, n_rows - 1, cell_deg, n_cols - 1, *params, limit]
-
-
-def country_counts() -> tuple[str, list[Any]]:
-    """Detections per country (needs the observation_country table)."""
-    return (
-        """
-        SELECT
-            c.iso_a3 AS code,
-            c.country AS name,
-            count(*) AS detections,
-            count(*) FILTER (WHERE o.sensor = 'modis') AS modis,
-            count(*) FILTER (WHERE o.sensor = 'viirs') AS viirs
-        FROM observation_country c
-        JOIN observations o ON CAST(o.observation_id AS VARCHAR) = c.observation_id
-        GROUP BY c.iso_a3, c.country
-        ORDER BY c.country
-        """,
-        [],
-    )

@@ -325,7 +325,7 @@ async function loadSensors() {
       const log = data.agreement.log10_frp || {};
       html += '<p class="empty">Latest matched-pair snapshot (' + esc(data.agreement.run_id) + ", " +
         fmt(data.agreement.n_pairs) + " pairs): log10 FRP MAE " + fmt(log.mae) +
-        " dex, bias " + fmt(log.bias) + " dex — cross-sensor consistency, not accuracy.</p>";
+        " dex, bias " + fmt(log.bias) + " dex — cross-sensor consistency, not accuracy against true fire occurrence.</p>";
     } else {
       html += '<p class="empty">No validation run stored yet.</p>';
     }

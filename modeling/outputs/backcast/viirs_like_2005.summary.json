@@ -1,0 +1,25 @@
+{
+  "years": [
+    2005
+  ],
+  "files": 208,
+  "grid_degrees": 0.05,
+  "cell_days": 2785618,
+  "expected_viirs_cell_days": 2331945,
+  "expected_viirs_detections": 8832296.7,
+  "expected_viirs_detections_in_classified_cells": 8461581.5,
+  "threshold": 0.389,
+  "calibrated": true,
+  "count_model_is_conditional": false,
+  "model": "hist_gradient_boosting",
+  "frp_written": true,
+  "cleaning": {
+    "drop_non_vegetation": 156606,
+    "drop_invalid_coordinates": 0,
+    "drop_invalid_timestamp": 0,
+    "drop_exact_duplicates": 0,
+    "drop_outside_viirs_coverage": 0,
+    "frp_set_to_nan": 3
+  },
+  "note": "Conditional VIIRS-equivalent estimate from MODIS (only cell-days where MODIS fired). Multiply totals by the per-region k from the coverage table to reach the unconditional VIIRS scale."
+}

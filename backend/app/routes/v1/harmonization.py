@@ -14,7 +14,7 @@ from ...schemas.harmonization import (
     ResultQuery,
     RunQuery,
 )
-from ...serialization import jsonable
+from ...serialization import TIME_BASIS, jsonable
 from ...services import harmonization as service
 from ..common import ok, page_meta, parse_body, parse_query
 
@@ -48,7 +48,7 @@ def run_harmonization():
         jsonable(result),
         {
             "note": "Only per-cell results are written; observations are never modified.",
-            "time_basis": "UTC (assumed; timezone verification pending - dataset-facts.md §2)",
+            "time_basis": TIME_BASIS,
         },
         201,
     )
@@ -174,6 +174,6 @@ def cells():
             **page_meta(total, query.limit, query.offset),
             "run_id": payload["run_id"],
             "grid_id": payload["grid_id"],
-            "time_basis": "UTC (assumed; timezone verification pending - dataset-facts.md §2)",
+            "time_basis": TIME_BASIS,
         },
     )

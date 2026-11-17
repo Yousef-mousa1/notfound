@@ -1,0 +1,117 @@
+{
+  "generated_at": "20261117T092938Z",
+  "run_id": "est_pyro_2026_v1",
+  "model_dir": "/Users/yo/Documents/notfound/modeling/outputs/model_final",
+  "series": "/Users/yo/Documents/notfound/modeling/outputs/harmonized.parquet",
+  "source_summary": {
+    "rows": 813254,
+    "region_deg": 1.0,
+    "years": [
+      2005,
+      2006,
+      2012,
+      2013,
+      2024,
+      2025
+    ],
+    "observed_years": [
+      2013,
+      2024,
+      2025
+    ],
+    "backcast_years": [
+      2005,
+      2006,
+      2012
+    ],
+    "backcast_years_dropped_as_observed": [],
+    "global_k": 2.4509834212859585,
+    "k_backcast_rake_factor": 0.7903141876602273,
+    "k_baseline_usage": {
+      "region_month_raked": 154677,
+      "region_month_year": 136489,
+      "global_month": 86631,
+      "region_month": 28830
+    },
+    "totals": {
+      "modis_raw": {
+        "observed": 26575016.0,
+        "estimated": 0.0
+      },
+      "viirs_harmonized": {
+        "observed": 53268829.0,
+        "estimated": 64111956.0020426
+      }
+    },
+    "totals_by_year": {
+      "2005": {
+        "modis_raw": 4968546.0,
+        "viirs_harmonized": 22160855.417966165
+      },
+      "2006": {
+        "modis_raw": 4548962.0,
+        "viirs_harmonized": 20647676.186850812
+      },
+      "2012": {
+        "modis_raw": 4821497.0,
+        "viirs_harmonized": 21303424.397225622
+      },
+      "2013": {
+        "modis_raw": 4086914.0,
+        "viirs_harmonized": 17520494.0
+      },
+      "2024": {
+        "modis_raw": 4649546.0,
+        "viirs_harmonized": 19263601.0
+      },
+      "2025": {
+        "modis_raw": 3499551.0,
+        "viirs_harmonized": 16484734.0
+      }
+    },
+    "note": "viirs_harmonized = (observed VIIRS in the MODIS table OR MODIS->VIIRS backcast) * k, where k restores VIIRS-only cell-days. modis_raw is uncorrected MODIS detections. low/high are a heuristic +/-35% band on corrected rows, not a fitted interval. Backcast k is raked to the observed global ratio; use --no-rake-k to see the unmodified estimate."
+  },
+  "notes": "Model-produced estimates only. observations is never modified. low/high are a heuristic band, not a fitted confidence interval.",
+  "model_run": {
+    "artifact_path": "/Users/yo/Documents/notfound/modeling/outputs/model_final",
+    "created_at": "2026-11-17T09:29:39Z",
+    "method": "presence=hist_gradient_boosting; count=hist_gradient_boosting; calibration=isotonic; refit_on_all_rows=True",
+    "metrics": "{\"classification_validation\": {\"brier\": 0.19672896075217025, \"brier_uncalibrated\": 0.1969460897695642, \"confusion_matrix\": {\"labels\": [\"no_viirs\", \"viirs\"], \"matrix\": [[120739, 267018], [41383, 501328]]}, \"f1\": 0.7647691900504707, \"positive_rate\": 0.5832667001981798, \"pr_auc\": 0.8104722482760736, \"precision\": 0.6524768789061178, \"recall\": 0.9237476299540639, \"roc_auc\": 0.7517348402035707, \"threshold\": 0.3890441587479039}, \"frp_useful\": true, \"regression_validation\": {\"hist_gradient_boosting\": {\"mae\": 2.5000008489204975, \"mean_prediction\": 3.2196457829049843, \"mean_truth\": 3.242033041437212, \"poisson_deviance\": 3.549257759641159, \"r2\": 0.5663492664864034, \"rmse\": 4.703809238663654, \"seconds\": 94.0, \"spearman\": 0.512081751823278}, \"poisson_regression\": {\"mae\": 2.711679090123776, \"mean_prediction\": 3.292013642191213, \"mean_truth\": 3.242033041437212, \"poisson_deviance\": 3.982198203788152, \"r2\": 0.42687900284708946, \"rmse\": 5.4075783173067435, \"seconds\": 42.2, \"spearman\": 0.45819178623420037}}, \"split\": {\"block_days\": 14, \"seed\": 0, \"test_rows\": 2554283, \"test_year\": 2024, \"tile_deg\": 10.0, \"train_rows\": 3470959, \"type\": \"year\", \"validation\": \"time_blocks\", \"validation_rows\": 930468, \"validation_year\": null}, \"test_count\": {\"ci95\": {\"mae\": [2.807339941796898, 2.8186329134257337]}, \"mae\": 2.8120492039625504, \"mean_prediction\": 3.579634902472144, \"mean_truth\": 3.355421462696185, \"poisson_deviance\": 4.09792552321387, \"r2\": 0.51520106118108, \"rmse\": 5.429756813185528, \"spearman\": 0.47401840158055747}, \"test_monthly_count\": {\"global_monthly\": {\"2024-01\": {\"prediction\": 605973.0049156749, \"truth\": 620681.0}, \"2024-02\": {\"prediction\": 410639.72197730833, \"truth\": 426156.0}, \"2024-03\": {\"prediction\": 378951.6908517547, \"truth\": 384603.0}, \"2024-04\": {\"prediction\": 431374.11151737807, \"truth\": 449802.0}, \"2024-05\": {\"prediction\": 473118.09009852965, \"truth\": 439288.0}, \"2024-06\": {\"prediction\": 706454.9661643323, \"truth\": 667256.0}, \"2024-07\": {\"prediction\": 1420278.169089437, \"truth\": 860486.0}, \"2024-08\": {\"prediction\": 1845070.6016070095, \"truth\": 1909498.0}, \"2024-09\": {\"prediction\": 1349238.3602669653, \"truth\": 1368683.0}, \"2024-10\": {\"prediction\": 596677.6552533534, \"truth\": 595199.0}, \"2024-11\": {\"prediction\": 433595.59336514986, \"truth\": 360353.0}, \"2024-12\": {\"prediction\": 492028.6124843615, \"truth\": 488691.0}}, \"global_monthly_spearman\": 0.9370629370629372, \"monthly_mae\": 582.6347056392858, \"monthly_ratio_median\": 1.3406782593450055, \"monthly_ratio_p10\": 0.8427335820820435, \"monthly_ratio_p90\": 488391443.49434626, \"region_months\": 2407, \"sum_prediction\": 9143400.577591255, \"sum_ratio\": 1.0668212450413894, \"sum_truth\": 8570696.0}, \"test_presence_calibrated\": {\"brier\": 0.21663098007410964, \"brier_uncalibrated\": 0.21656728216587548, \"ci95\": {\"pr_auc\": [0.7431003897393383, 0.7445886184439504], \"roc_auc\": [0.7102979638157312, 0.7115645901685864]}, \"confusion_matrix\": {\"labels\": [\"no_viirs\", \"viirs\"], \"matrix\": [[311728, 823773], [112359, 1306423]]}, \"f1\": 0.7362249075649383, \"positive_rate\": 0.5554521562411057, \"pr_auc\": 0.7438890928377577, \"precision\": 0.6132876974700919, \"recall\": 0.9208060153004478, \"roc_auc\": 0.7108965076322711, \"threshold\": 0.3890441587479039}}",
+    "model_name": "hist_gradient_boosting",
+    "n_estimates": 0,
+    "notes": "Held-out metrics come from the evaluation run; shipped model was refit on all rows.",
+    "run_id": "est_pyro_2026_v1",
+    "source_path": null,
+    "test_year": 2024,
+    "trained_years": "[2013, 2024, 2025]",
+    "validation_split": "time_blocks"
+  },
+  "import": {
+    "duplicates_ignored": 0,
+    "level": "region",
+    "n_entities": 13953,
+    "n_scales": 2,
+    "period_max": "2025-12-01",
+    "period_min": "2005-01-01",
+    "rows_added": 813254,
+    "rows_imported": 813254,
+    "rows_in_run": 813254,
+    "rows_read": 813254,
+    "run_id": "est_pyro_2026_v1",
+    "source": "/Users/yo/Documents/notfound/modeling/outputs/harmonized.parquet"
+  },
+  "run_detail": {
+    "artifact_path": "/Users/yo/Documents/notfound/modeling/outputs/model_final",
+    "created_at": "2026-11-17T09:29:39Z",
+    "method": "presence=hist_gradient_boosting; count=hist_gradient_boosting; calibration=isotonic; refit_on_all_rows=True",
+    "metrics": "{\"classification_validation\": {\"brier\": 0.19672896075217025, \"brier_uncalibrated\": 0.1969460897695642, \"confusion_matrix\": {\"labels\": [\"no_viirs\", \"viirs\"], \"matrix\": [[120739, 267018], [41383, 501328]]}, \"f1\": 0.7647691900504707, \"positive_rate\": 0.5832667001981798, \"pr_auc\": 0.8104722482760736, \"precision\": 0.6524768789061178, \"recall\": 0.9237476299540639, \"roc_auc\": 0.7517348402035707, \"threshold\": 0.3890441587479039}, \"frp_useful\": true, \"regression_validation\": {\"hist_gradient_boosting\": {\"mae\": 2.5000008489204975, \"mean_prediction\": 3.2196457829049843, \"mean_truth\": 3.242033041437212, \"poisson_deviance\": 3.549257759641159, \"r2\": 0.5663492664864034, \"rmse\": 4.703809238663654, \"seconds\": 94.0, \"spearman\": 0.512081751823278}, \"poisson_regression\": {\"mae\": 2.711679090123776, \"mean_prediction\": 3.292013642191213, \"mean_truth\": 3.242033041437212, \"poisson_deviance\": 3.982198203788152, \"r2\": 0.42687900284708946, \"rmse\": 5.4075783173067435, \"seconds\": 42.2, \"spearman\": 0.45819178623420037}}, \"split\": {\"block_days\": 14, \"seed\": 0, \"test_rows\": 2554283, \"test_year\": 2024, \"tile_deg\": 10.0, \"train_rows\": 3470959, \"type\": \"year\", \"validation\": \"time_blocks\", \"validation_rows\": 930468, \"validation_year\": null}, \"test_count\": {\"ci95\": {\"mae\": [2.807339941796898, 2.8186329134257337]}, \"mae\": 2.8120492039625504, \"mean_prediction\": 3.579634902472144, \"mean_truth\": 3.355421462696185, \"poisson_deviance\": 4.09792552321387, \"r2\": 0.51520106118108, \"rmse\": 5.429756813185528, \"spearman\": 0.47401840158055747}, \"test_monthly_count\": {\"global_monthly\": {\"2024-01\": {\"prediction\": 605973.0049156749, \"truth\": 620681.0}, \"2024-02\": {\"prediction\": 410639.72197730833, \"truth\": 426156.0}, \"2024-03\": {\"prediction\": 378951.6908517547, \"truth\": 384603.0}, \"2024-04\": {\"prediction\": 431374.11151737807, \"truth\": 449802.0}, \"2024-05\": {\"prediction\": 473118.09009852965, \"truth\": 439288.0}, \"2024-06\": {\"prediction\": 706454.9661643323, \"truth\": 667256.0}, \"2024-07\": {\"prediction\": 1420278.169089437, \"truth\": 860486.0}, \"2024-08\": {\"prediction\": 1845070.6016070095, \"truth\": 1909498.0}, \"2024-09\": {\"prediction\": 1349238.3602669653, \"truth\": 1368683.0}, \"2024-10\": {\"prediction\": 596677.6552533534, \"truth\": 595199.0}, \"2024-11\": {\"prediction\": 433595.59336514986, \"truth\": 360353.0}, \"2024-12\": {\"prediction\": 492028.6124843615, \"truth\": 488691.0}}, \"global_monthly_spearman\": 0.9370629370629372, \"monthly_mae\": 582.6347056392858, \"monthly_ratio_median\": 1.3406782593450055, \"monthly_ratio_p10\": 0.8427335820820435, \"monthly_ratio_p90\": 488391443.49434626, \"region_months\": 2407, \"sum_prediction\": 9143400.577591255, \"sum_ratio\": 1.0668212450413894, \"sum_truth\": 8570696.0}, \"test_presence_calibrated\": {\"brier\": 0.21663098007410964, \"brier_uncalibrated\": 0.21656728216587548, \"ci95\": {\"pr_auc\": [0.7431003897393383, 0.7445886184439504], \"roc_auc\": [0.7102979638157312, 0.7115645901685864]}, \"confusion_matrix\": {\"labels\": [\"no_viirs\", \"viirs\"], \"matrix\": [[311728, 823773], [112359, 1306423]]}, \"f1\": 0.7362249075649383, \"positive_rate\": 0.5554521562411057, \"pr_auc\": 0.7438890928377577, \"precision\": 0.6132876974700919, \"recall\": 0.9208060153004478, \"roc_auc\": 0.7108965076322711, \"threshold\": 0.3890441587479039}}",
+    "model_name": "hist_gradient_boosting",
+    "n_estimates": 813254,
+    "notes": "Held-out metrics come from the evaluation run; shipped model was refit on all rows.",
+    "run_id": "est_pyro_2026_v1",
+    "source_path": "/Users/yo/Documents/notfound/modeling/outputs/harmonized.parquet",
+    "test_year": 2024,
+    "trained_years": "[2013, 2024, 2025]",
+    "validation_split": "time_blocks"
+  }
+}

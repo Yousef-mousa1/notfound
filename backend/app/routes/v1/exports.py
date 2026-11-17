@@ -12,13 +12,14 @@ from ...db import get_db
 from ...errors import ApiError
 from ...schemas.exports import (
     CsvExportRequest,
+    EstimateExportRequest,
     ExportFileQuery,
     ExportHistoryQuery,
     HarmonizedExportRequest,
     ObservationExportRequest,
     ValidationReportRequest,
 )
-from ...serialization import jsonable
+from ...serialization import TIME_BASIS, jsonable
 from ...services import exports as service
 from ..common import ok, page_meta, parse_body, parse_query
 
@@ -53,7 +54,7 @@ def _with_links(record: dict) -> dict:
 def _meta(note: str) -> dict:
     return {
         "note": note,
-        "time_basis": "UTC (assumed; timezone verification pending - dataset-facts.md §2)",
+        "time_basis": TIME_BASIS,
         "limitations_included": True,
         "download_hint": "Append ?download=true to the download_url to fetch the file.",
     }
@@ -100,6 +101,23 @@ def export_harmonized():
         _meta(
             "Harmonization is a cross-sensor mapping, not a physical correction; "
             "MODIS is not ground truth."
+        ),
+        201,
+    )
+
+
+@exports_blueprint.post("/exports/estimate-series")
+def export_estimate_series():
+    """Export the model-produced harmonized estimate series plus metadata."""
+    request = parse_body(EstimateExportRequest)
+    record = service.create_estimates(
+        get_db(), current_app.config["HARMONIZER"], request
+    )
+    return ok(
+        _with_links(record),
+        _meta(
+            "Model-produced estimates, including backcasts; these are not FIRMS "
+            "detections and no row is absent because there was no fire."
         ),
         201,
     )

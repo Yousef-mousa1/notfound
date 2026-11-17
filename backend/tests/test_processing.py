@@ -10,8 +10,6 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-import yaml
-
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
@@ -78,14 +76,40 @@ def test_filter_saves_selection(client, imported):
     assert 0 < len(data["preview"]) <= 10
 
 
-def test_normalize_reports_checks_and_skips_unverified_mapping(client, imported):
+def test_normalize_applies_official_and_heuristic_confidence_mapping(client, app, imported):
     response = client.post("/api/v1/processing/normalize", json={"apply_confidence": True})
 
     assert response.status_code == 201
     data = response.get_json()["data"]
     assert data["checks"]["rows"] == 50
-    assert data["confidence_mapping"]["applied"] is False
-    assert "Phase 03" in data["confidence_mapping"]["reason"]
+    mapping = data["confidence_mapping"]
+    assert mapping["applied"] is True
+    assert mapping["rows"] == 50
+    assert mapping["sensors"]["viirs"]["method"] == "exact"
+    assert "FIRMS" in mapping["sensors"]["viirs"]["source"]
+    assert mapping["sensors"]["modis"]["method"] == "ranges"
+    assert "HEURISTIC" in mapping["sensors"]["modis"]["source"]
+
+    database = app.extensions["db"]
+    rows = database.fetch_all(
+        "SELECT sensor, confidence_class, count(*) AS n FROM observations "
+        "GROUP BY sensor, confidence_class"
+    )
+    counts = {(row["sensor"], row["confidence_class"]): row["n"] for row in rows}
+    assert counts[("viirs", "nominal")] == 25
+    assert counts[("modis", "low")] == 2
+    assert counts[("modis", "nominal")] == 21
+    assert counts[("modis", "high")] == 2
+
+
+def test_normalize_skips_mapping_when_not_configured(client, app, imported):
+    app.config["HARMONIZER"]["confidence"] = {}
+    response = client.post("/api/v1/processing/normalize", json={"apply_confidence": True})
+
+    assert response.status_code == 201
+    mapping = response.get_json()["data"]["confidence_mapping"]
+    assert mapping["applied"] is False
+    assert "Phase 03" in mapping["reason"]
 
 
 def test_grid_generate_and_fetch(client, imported):

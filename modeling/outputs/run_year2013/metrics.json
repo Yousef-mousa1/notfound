@@ -1,0 +1,408 @@
+{
+  "data": [
+    "data/processed/cellday_2013.parquet",
+    "data/processed/cellday_2024.parquet",
+    "data/processed/cellday_2025.parquet"
+  ],
+  "rows": 6955710,
+  "features": [
+    "modis_detections",
+    "modis_frp_mean",
+    "modis_frp_max",
+    "modis_frp_sum",
+    "modis_frp_std",
+    "modis_bt_primary_mean",
+    "modis_bt_primary_max",
+    "modis_bt_secondary_mean",
+    "modis_bt_secondary_max",
+    "modis_scan_mean",
+    "modis_track_mean",
+    "modis_hour_mean",
+    "modis_night_share",
+    "modis_platforms",
+    "modis_conf_low",
+    "modis_conf_nominal",
+    "modis_conf_high",
+    "modis_neighbour_count",
+    "modis_prev1_count",
+    "modis_prev2_count",
+    "modis_prev3_count",
+    "modis_prev3_mean",
+    "doy_sin",
+    "doy_cos",
+    "hour_sin",
+    "hour_cos",
+    "cell_lat",
+    "cell_lon"
+  ],
+  "dropped_features": [],
+  "split": {
+    "type": "year",
+    "validation": "time_blocks",
+    "test_year": 2013,
+    "validation_year": null,
+    "block_days": 14,
+    "tile_deg": 10.0,
+    "seed": 0,
+    "train_rows": 3634283,
+    "validation_rows": 975209,
+    "test_rows": 2346218
+  },
+  "classification": {
+    "logistic_regression": {
+      "roc_auc": 0.6451983151900704,
+      "pr_auc": 0.614215066127741,
+      "positive_rate": 0.48483453290525413,
+      "threshold": 0.37321935083359287,
+      "precision": 0.5177763252608325,
+      "recall": 0.9264934488119032,
+      "f1": 0.6643030019956689,
+      "confusion_matrix": {
+        "labels": [
+          "no_viirs",
+          "viirs"
+        ],
+        "matrix": [
+          [
+            94413,
+            407981
+          ],
+          [
+            34755,
+            438060
+          ]
+        ]
+      },
+      "precision_ge_0_8_threshold": 0.999370767994226,
+      "seconds": 65.7
+    },
+    "hist_gradient_boosting": {
+      "roc_auc": 0.6432736461742373,
+      "pr_auc": 0.6103123329702269,
+      "positive_rate": 0.48483453290525413,
+      "threshold": 0.350120894049346,
+      "precision": 0.5271476090961926,
+      "recall": 0.9016190264691264,
+      "f1": 0.6653099285605597,
+      "confusion_matrix": {
+        "labels": [
+          "no_viirs",
+          "viirs"
+        ],
+        "matrix": [
+          [
+            120003,
+            382391
+          ],
+          [
+            46516,
+            426299
+          ]
+        ]
+      },
+      "precision_ge_0_8_threshold": 0.9967842746498377,
+      "seconds": 101.6
+    }
+  },
+  "classification_calibrated_validation": {
+    "roc_auc": 0.6453509306638971,
+    "pr_auc": 0.613237730986019,
+    "positive_rate": 0.48483453290525413,
+    "threshold": 0.3333333333333333,
+    "precision": 0.5177763252608325,
+    "recall": 0.9264934488119032,
+    "f1": 0.6643030019956689,
+    "confusion_matrix": {
+      "labels": [
+        "no_viirs",
+        "viirs"
+      ],
+      "matrix": [
+        [
+          94413,
+          407981
+        ],
+        [
+          34755,
+          438060
+        ]
+      ]
+    },
+    "brier": 0.23338192837109348,
+    "brier_uncalibrated": 0.24316279954303463
+  },
+  "regression": {
+    "poisson_regression": {
+      "mae": 2.9205668020747475,
+      "rmse": 6.060739123803072,
+      "r2": 0.1547676901994003,
+      "spearman": 0.3265979545321124,
+      "mean_truth": 2.6444157098632193,
+      "mean_prediction": 3.327062959898456,
+      "poisson_deviance": 4.7016582417372215,
+      "seconds": 43.2
+    },
+    "hist_gradient_boosting": {
+      "mae": 2.7869751786151507,
+      "rmse": 5.554412716122179,
+      "r2": 0.29009342026327056,
+      "spearman": 0.340775207502804,
+      "mean_truth": 2.6444157098632193,
+      "mean_prediction": 3.2160567692975333,
+      "poisson_deviance": 4.569901619287297,
+      "seconds": 95.0
+    }
+  },
+  "best": {
+    "classification": "logistic_regression",
+    "regression": "hist_gradient_boosting"
+  },
+  "test": {
+    "presence": {
+      "roc_auc": 0.7106854463389078,
+      "pr_auc": 0.8031087793543927,
+      "positive_rate": 0.6176915359101328,
+      "threshold": 0.37321935083359287,
+      "precision": 0.6613421265695492,
+      "recall": 0.9220956653802443,
+      "f1": 0.7702490256876096,
+      "confusion_matrix": {
+        "labels": [
+          "no_viirs",
+          "viirs"
+        ],
+        "matrix": [
+          [
+            212672,
+            684307
+          ],
+          [
+            112902,
+            1336337
+          ]
+        ]
+      }
+    },
+    "presence_calibrated": {
+      "roc_auc": 0.7105871210096677,
+      "pr_auc": 0.7994454495855674,
+      "positive_rate": 0.6176915359101328,
+      "threshold": 0.3333333333333333,
+      "precision": 0.6613421265695492,
+      "recall": 0.9220956653802443,
+      "f1": 0.7702490256876096,
+      "confusion_matrix": {
+        "labels": [
+          "no_viirs",
+          "viirs"
+        ],
+        "matrix": [
+          [
+            212672,
+            684307
+          ],
+          [
+            112902,
+            1336337
+          ]
+        ]
+      },
+      "brier": 0.22551600079961354,
+      "brier_uncalibrated": 0.20873417654372192,
+      "ci95": {
+        "pr_auc": [
+          0.7987794210102241,
+          0.8000187815021282
+        ],
+        "roc_auc": [
+          0.7099418743732334,
+          0.7111981648164292
+        ]
+      }
+    },
+    "count": {
+      "mae": 2.432255934408042,
+      "rmse": 4.385731390296712,
+      "r2": 0.5032388376593631,
+      "spearman": 0.49875734572645014,
+      "mean_truth": 3.152530583262084,
+      "mean_prediction": 3.0791134877552704,
+      "poisson_deviance": 3.4699225223669155,
+      "ci95": {
+        "mae": [
+          2.427867155152049,
+          2.4370737862313745
+        ]
+      }
+    },
+    "monthly_count": {
+      "sum_truth": 7396524.0,
+      "sum_prediction": 7224271.489014195,
+      "sum_ratio": 0.9767116944410908,
+      "region_months": 2438,
+      "monthly_mae": 330.973784128355,
+      "monthly_ratio_median": 1.1961456226061418,
+      "monthly_ratio_p10": 0.7562841580002948,
+      "monthly_ratio_p90": 9.935314618491375,
+      "global_monthly_spearman": 0.9930069930069931,
+      "global_monthly": {
+        "2013-01": {
+          "truth": 633587.0,
+          "prediction": 636673.3334329795
+        },
+        "2013-02": {
+          "truth": 413313.0,
+          "prediction": 406975.3022921621
+        },
+        "2013-03": {
+          "truth": 399185.0,
+          "prediction": 408232.6580104378
+        },
+        "2013-04": {
+          "truth": 424530.0,
+          "prediction": 438054.4169237416
+        },
+        "2013-05": {
+          "truth": 356511.0,
+          "prediction": 363074.33695257537
+        },
+        "2013-06": {
+          "truth": 687959.0,
+          "prediction": 636776.413656462
+        },
+        "2013-07": {
+          "truth": 886311.0,
+          "prediction": 829115.1535624781
+        },
+        "2013-08": {
+          "truth": 1340423.0,
+          "prediction": 1299865.725445606
+        },
+        "2013-09": {
+          "truth": 839033.0,
+          "prediction": 800733.2115026996
+        },
+        "2013-10": {
+          "truth": 458967.0,
+          "prediction": 452074.14862868364
+        },
+        "2013-11": {
+          "truth": 399171.0,
+          "prediction": 371084.0105193092
+        },
+        "2013-12": {
+          "truth": 557534.0,
+          "prediction": 581612.7780870599
+        }
+      }
+    },
+    "frp": {
+      "mae": 6.039718041981345,
+      "rmse": 13.143509442775184,
+      "r2": 0.12945072287786763,
+      "spearman": 0.48542048796570175,
+      "mean_truth": 11.034271936838742,
+      "mean_prediction": 8.158848026000028
+    },
+    "frp_validation": {
+      "mae": 6.077924624598907,
+      "rmse": 13.430947837432745,
+      "r2": 0.12231516560711364,
+      "spearman": 0.46539385815587664,
+      "mean_truth": 10.69949520901554,
+      "mean_prediction": 7.898076301633595
+    },
+    "baselines": {
+      "presence_prevalence_pr_auc": 0.6176915359101328,
+      "presence_modis_detections_roc_auc": 0.6379943789216979,
+      "presence_modis_detections_pr_auc": 0.7218796383557473,
+      "count_ratio_times_modis": {
+        "mae": 2.8356449364193614,
+        "rmse": 4.994960921149849,
+        "r2": 0.3556411975112811,
+        "spearman": 0.39173635100887505,
+        "mean_truth": 3.152530583262084,
+        "mean_prediction": 3.3268707884300452,
+        "poisson_deviance": 4.319606565659879
+      },
+      "count_ratio_monthly": {
+        "sum_truth": 7396524.0,
+        "sum_prediction": 7805564.127488764,
+        "sum_ratio": 1.0553016697422686,
+        "region_months": 2438,
+        "monthly_mae": 944.9365605498846,
+        "monthly_ratio_median": 2.015579316146547,
+        "monthly_ratio_p10": 0.7601468720196014,
+        "monthly_ratio_p90": 23.687557273741096,
+        "global_monthly_spearman": 0.9440559440559443,
+        "global_monthly": {
+          "2013-01": {
+            "truth": 633587.0,
+            "prediction": 680416.194344931
+          },
+          "2013-02": {
+            "truth": 413313.0,
+            "prediction": 483810.00766035175
+          },
+          "2013-03": {
+            "truth": 399185.0,
+            "prediction": 524225.2311032207
+          },
+          "2013-04": {
+            "truth": 424530.0,
+            "prediction": 523501.38205616025
+          },
+          "2013-05": {
+            "truth": 356511.0,
+            "prediction": 467988.46279003716
+          },
+          "2013-06": {
+            "truth": 687959.0,
+            "prediction": 728979.0168241063
+          },
+          "2013-07": {
+            "truth": 886311.0,
+            "prediction": 867253.2837321106
+          },
+          "2013-08": {
+            "truth": 1340423.0,
+            "prediction": 1159121.0608369643
+          },
+          "2013-09": {
+            "truth": 839033.0,
+            "prediction": 784241.7402454673
+          },
+          "2013-10": {
+            "truth": 458967.0,
+            "prediction": 492372.05324866896
+          },
+          "2013-11": {
+            "truth": 399171.0,
+            "prediction": 442705.3132254277
+          },
+          "2013-12": {
+            "truth": 557534.0,
+            "prediction": 650950.3814213176
+          }
+        }
+      },
+      "frp_ratio_times_modis": {
+        "mae": 8.170842319593183,
+        "rmse": 17.59117223485856,
+        "r2": -0.5594097233675002,
+        "spearman": 0.3884902440813197,
+        "mean_truth": 11.034271936838742,
+        "mean_prediction": 10.806455623266851
+      },
+      "frp_ratio_times_modis_validation": {
+        "mae": 8.316902554894362,
+        "rmse": 18.89321259438761,
+        "r2": -0.7367483394452157,
+        "spearman": 0.3509744117938703,
+        "mean_truth": 10.69949520901554,
+        "mean_prediction": 10.274119709765866
+      }
+    }
+  },
+  "frp_useful": true
+}

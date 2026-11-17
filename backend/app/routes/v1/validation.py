@@ -1,7 +1,8 @@
 """Validation endpoints: /api/v1/validation.
 
-Metrics are cross-sensor consistency on matched pairs, never accuracy: there is
-no independent reference dataset in this project.
+Metrics are cross-sensor consistency on matched pairs, not accuracy against true
+fire occurrence. The offline modeling layer separately evaluates held-out years
+against observed VIIRS; these endpoints do not perform that validation.
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from ...db import get_db
 from ...errors import ApiError
 from ...schemas.harmonization import MetricQuery
 from ...schemas.validation import ValidationListQuery, ValidationRunRequest
-from ...serialization import jsonable
+from ...serialization import TIME_BASIS, jsonable
 from ...services import validation as service
 from ..common import ok, page_meta, parse_body, parse_query
 
@@ -27,8 +28,8 @@ def run_validation():
     return ok(
         jsonable(result),
         {
-            "note": "Cross-sensor consistency on matched pairs; not accuracy.",
-            "time_basis": "UTC (assumed; timezone verification pending - dataset-facts.md §2)",
+            "note": "Cross-sensor consistency on matched pairs, not accuracy against true fire occurrence.",
+            "time_basis": TIME_BASIS,
         },
         201,
     )

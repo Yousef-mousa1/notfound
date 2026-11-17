@@ -1,0 +1,24 @@
+{
+  "presence_threshold": 0.3890441587479039,
+  "presence_threshold_uncalibrated": 0.38406932964708357,
+  "precision_ge_0_8_threshold": 0.6600372158606549,
+  "calibration": "isotonic",
+  "presence_model": "hist_gradient_boosting",
+  "count_model": "hist_gradient_boosting",
+  "count_model_is_conditional": false,
+  "frp_model": "log1p (HistGradientBoostingRegressor)",
+  "frp_useful": true,
+  "grid_degrees": 0.05,
+  "trained_on": [
+    "data/processed/cellday_2013.parquet",
+    "data/processed/cellday_2024.parquet",
+    "data/processed/cellday_2025.parquet"
+  ],
+  "split": "year",
+  "test_year": 2024,
+  "validation_year": null,
+  "validation_split": "time_blocks",
+  "refit_on_all_rows": false,
+  "refit_rows": 4401427,
+  "dropped_features": []
+}

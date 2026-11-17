@@ -46,7 +46,10 @@ The low R² and the +0.50 dex bias are real sample properties, not tuning
 failures: MODIS and VIIRS do not agree on this dataset. No scientific parameter
 is decided yet: every value in `config/default.yaml` that needs justification is
 still `null`. FRP is reported as instantaneous power (MW) and never summed into
-energy. Time is labelled as UTC **assumed** until Phase 03 verifies it.
+energy. Time is labelled **UTC (verified via FIRMS documentation 2026-11-17)**.
+Confidence harmonization maps official VIIRS `l/n/h` exactly and labels MODIS
+numeric bands as **heuristic** (FIRMS defines the classes but publishes no numeric
+cut-offs). See `docs/decisions.md` for sources.
 
 ## Layout
 

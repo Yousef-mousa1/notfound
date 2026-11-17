@@ -46,8 +46,14 @@ Files: `modis_2012_Benin.csv` (≈1.39 MB), `viirs-snpp_2012_Benin.csv` (≈6.08
 
 - [ ] Exact product names / collection mapping for MODIS `version = 6.2` and VIIRS `version = 2` (FIRMS documentation).
 - [ ] Official meaning of `type` values 0, 2, 3 and whether any should be filtered.
-- [ ] Official MODIS confidence classes (commonly cited as low / nominal / high with numeric cut-offs) and VIIRS `l/n/h` meaning.
-- [ ] Time zone of `acq_date` / `acq_time` (expected UTC; confirm).
+- [x] Official MODIS confidence classes and VIIRS `l/n/h` meaning — **verified 2026-11-17**.
+  VIIRS `l/n/h` are official FIRMS classes and are mapped exactly (`l`→low, `n`→nominal,
+  `h`→high). FIRMS defines MODIS low/nominal/high but **does not publish numeric
+  cut-offs** and calls the field experimental; the configured 0–29/30–79/80–100 bands
+  are therefore `HEURISTIC`, not official. Sources and decision: `docs/decisions.md`.
+- [x] Time zone of `acq_date` / `acq_time` — **VERIFIED: UTC** (2026-11-17).
+  FIRMS attribute tables state *"Acq_Time — Time of acquisition/overpass of the
+  satellite (in UTC)"*. Sources: `docs/decisions.md`.
 - [ ] Meaning of `scan` / `track` (pixel footprint along/across scan; units) and how to use them for pixel area.
 - [ ] Official meaning of `daynight`.
 - [ ] Platform identification: `satellite` values (Terra, Aqua, `N`) and their overpass characteristics.

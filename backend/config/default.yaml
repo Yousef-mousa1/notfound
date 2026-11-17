@@ -18,11 +18,17 @@ paths:
   uploads: "data/interim/uploads"
   # Exported files are new outputs; imported observations are never modified.
   exports: "data/processed/exports"
+  # Model-produced estimate series may only be imported from this directory
+  # (relative to the project root). Kept outside backend/ so it cannot read
+  # arbitrary absolute paths through /estimates/import.
+  estimates: "../modeling/outputs"
 
 # Slice E: exports.
 exports:
   # Refuse a single export larger than this, with a structured 413.
   max_rows: 500000
+  # The full harmonized estimate series (~813k rows) uses a dedicated higher cap.
+  estimate_max_rows: 1000000
 
 storage:
   # Analytical store. Raw CSVs are never modified; they are imported into this
@@ -54,16 +60,31 @@ schema:
   # Filled in Phase 01 after inspecting the real files.
   column_mapping: null
 
-# Phase 03: confidence harmonization. Scale differs per sensor and must be
-# based on verified official documentation before any value is added here.
+# Phase 03: confidence harmonization (verified 2026-11-17; see docs/decisions.md).
+# VIIRS labels l/n/h are official FIRMS classes. FIRMS defines three MODIS
+# classes (low/nominal/high) but does NOT publish numeric cut-offs and calls the
+# field experimental; the MODIS bands below are therefore HEURISTIC, not official.
+# `source` and `method` are echoed in the normalize response for transparency.
 confidence:
-  modis: null
-  viirs: null
+  viirs:
+    method: "exact"
+    source: "FIRMS official l/n/h classes (FIRMS_VIIRS_Firehotspots.html, 2026-11-17)"
+    mapping:
+      "l": "low"
+      "n": "nominal"
+      "h": "high"
+  modis:
+    method: "ranges"
+    source: "HEURISTIC bands; FIRMS defines classes but publishes no numeric cut-offs"
+    mapping:
+      "low": [0, 29]
+      "nominal": [30, 79]
+      "high": [80, 100]
 
 # Phase 04: temporal matching window, in hours. To be justified in Phase 04.
 temporal:
   time_window_h: null
-  # UTC confirmed in Phase 03; until then this is a placeholder, not a fact.
+  # UTC verified against FIRMS documentation on 2026-11-17 (see docs/decisions.md).
   timezone: "UTC"
 
 # Phase 05: spatial grid. To be justified in Phase 05.

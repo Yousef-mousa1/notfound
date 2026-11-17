@@ -21,21 +21,15 @@ const query = (path) => (input) => {
   return unwrap(get(path, { params, signal }));
 };
 
-// ------------------------------------------------------------------ health
-export const health = () => unwrap(get("/health"));
-
 // --------------------------------------------------------------- dashboard
 export const dashboardOverview = query(`${PREFIX}/dashboard/overview`);
 export const dashboardTrends = query(`${PREFIX}/dashboard/trends`);
 export const dashboardCalendar = query(`${PREFIX}/dashboard/calendar`);
+export const dashboardEstimatesCalendar = query(`${PREFIX}/dashboard/estimates-calendar`);
 export const dashboardAnomalies = query(`${PREFIX}/dashboard/anomalies`);
 export const dashboardMap = query(`${PREFIX}/dashboard/map`);
-export const dashboardActivityIndex = query(`${PREFIX}/dashboard/activity-index`);
 
 // --------------------------------------------------------------- analytics
-// -------------------------------------------------------- harmonization
-export const harmonizationCells = query(`${PREFIX}/harmonization/cells`);
-
 export const analyticsOverview = query(`${PREFIX}/analytics/overview`);
 export const hotspotTrends = query(`${PREFIX}/analytics/hotspot-trends`);
 export const frpTrends = query(`${PREFIX}/analytics/frp-trends`);

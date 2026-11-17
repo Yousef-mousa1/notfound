@@ -272,3 +272,71 @@ def test_export_row_limit_is_enforced(client, imported, app):
     assert response.get_json()["error"]["code"] == "export_too_large"
     history = client.get("/api/v1/exports/history").get_json()
     assert history["meta"]["total"] == 0
+
+
+def _estimate_run(client, tmp_path: Path) -> str:
+    from test_estimates import RUN_ID, _import, _register, _write_series
+
+    assert _register(client, RUN_ID).status_code == 201
+    assert _import(client, _write_series(tmp_path), RUN_ID).status_code == 201
+    return RUN_ID
+
+
+def test_estimate_series_export(client, tmp_path: Path):
+    run_id = _estimate_run(client, tmp_path)
+
+    response = client.post("/api/v1/exports/estimate-series", json={})
+
+    assert response.status_code == 201, response.get_json()
+    record = response.get_json()["data"]
+    assert record["kind"] == "estimate-series"
+    assert record["source"] == "estimates"
+    assert record["source_run_id"] == run_id
+    assert record["row_count"] == 8
+    assert [item["name"] for item in record["files"]] == [
+        "harmonized_estimates.csv",
+        "metadata.json",
+    ]
+
+    rows = _csv_rows(client.get(record["download_url"]).data)
+    assert len(rows) == 8
+    for column in ("scale", "value", "is_estimate", "coverage_corrected", "baseline", "model"):
+        assert column in rows[0]
+    # Observed and backcast rows stay separate, never merged.
+    assert {row["is_estimate"] for row in rows} == {"True", "False"}
+
+    metadata_file = next(
+        item for item in record["files"] if item["name"] == "metadata.json"
+    )
+    metadata = json.loads(client.get(metadata_file["download_url"]).data.decode("utf-8"))
+    assert metadata["inputs"]["run_id"] == run_id
+    assert any("not FIRMS detections" in note for note in metadata["limitations"])
+
+
+def test_estimate_series_scale_filter(client, tmp_path: Path):
+    run_id = _estimate_run(client, tmp_path)
+
+    response = client.post(
+        "/api/v1/exports/estimate-series",
+        json={"run_id": run_id, "scale": "viirs_harmonized"},
+    )
+
+    assert response.status_code == 201, response.get_json()
+    record = response.get_json()["data"]
+    rows = _csv_rows(client.get(record["download_url"]).data)
+    assert len(rows) == 8
+    assert {row["scale"] for row in rows} == {"viirs_harmonized"}
+
+
+def test_estimate_series_rejects_bad_scale(client, tmp_path: Path):
+    _estimate_run(client, tmp_path)
+    response = client.post(
+        "/api/v1/exports/estimate-series", json={"scale": "raw"}
+    )
+    assert response.status_code == 422
+
+
+def test_estimate_series_without_run_returns_409(client):
+    response = client.post("/api/v1/exports/estimate-series", json={})
+    assert response.status_code == 409
+    assert response.get_json()["error"]["code"] == "no_model_run"

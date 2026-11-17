@@ -1,0 +1,408 @@
+{
+  "data": [
+    "data/processed/cellday_2013.parquet",
+    "data/processed/cellday_2024.parquet",
+    "data/processed/cellday_2025.parquet"
+  ],
+  "rows": 6955710,
+  "features": [
+    "modis_detections",
+    "modis_frp_mean",
+    "modis_frp_max",
+    "modis_frp_sum",
+    "modis_frp_std",
+    "modis_bt_primary_mean",
+    "modis_bt_primary_max",
+    "modis_bt_secondary_mean",
+    "modis_bt_secondary_max",
+    "modis_scan_mean",
+    "modis_track_mean",
+    "modis_hour_mean",
+    "modis_night_share",
+    "modis_platforms",
+    "modis_conf_low",
+    "modis_conf_nominal",
+    "modis_conf_high",
+    "modis_neighbour_count",
+    "modis_prev1_count",
+    "modis_prev2_count",
+    "modis_prev3_count",
+    "modis_prev3_mean",
+    "doy_sin",
+    "doy_cos",
+    "hour_sin",
+    "hour_cos",
+    "cell_lat",
+    "cell_lon"
+  ],
+  "dropped_features": [],
+  "split": {
+    "type": "year",
+    "validation": "time_blocks",
+    "test_year": 2024,
+    "validation_year": null,
+    "block_days": 14,
+    "tile_deg": 10.0,
+    "seed": 0,
+    "train_rows": 3470959,
+    "validation_rows": 930468,
+    "test_rows": 2554283
+  },
+  "classification": {
+    "logistic_regression": {
+      "roc_auc": 0.7100100454806035,
+      "pr_auc": 0.7826073714000205,
+      "positive_rate": 0.5832667001981798,
+      "threshold": 0.38025539576990397,
+      "precision": 0.6239670897017412,
+      "recall": 0.9337437420652981,
+      "f1": 0.748053301526802,
+      "confusion_matrix": {
+        "labels": [
+          "no_viirs",
+          "viirs"
+        ],
+        "matrix": [
+          [
+            82363,
+            305394
+          ],
+          [
+            35958,
+            506753
+          ]
+        ]
+      },
+      "precision_ge_0_8_threshold": 0.6580980440087191,
+      "seconds": 51.4
+    },
+    "hist_gradient_boosting": {
+      "roc_auc": 0.7516285257141899,
+      "pr_auc": 0.8125722206289392,
+      "positive_rate": 0.5832667001981798,
+      "threshold": 0.38406932964708357,
+      "precision": 0.6524768789061178,
+      "recall": 0.9237476299540639,
+      "f1": 0.7647691900504707,
+      "confusion_matrix": {
+        "labels": [
+          "no_viirs",
+          "viirs"
+        ],
+        "matrix": [
+          [
+            120739,
+            267018
+          ],
+          [
+            41383,
+            501328
+          ]
+        ]
+      },
+      "precision_ge_0_8_threshold": 0.6600372158606549,
+      "seconds": 80.0
+    }
+  },
+  "classification_calibrated_validation": {
+    "roc_auc": 0.7517348402035707,
+    "pr_auc": 0.8104722482760736,
+    "positive_rate": 0.5832667001981798,
+    "threshold": 0.3890441587479039,
+    "precision": 0.6524768789061178,
+    "recall": 0.9237476299540639,
+    "f1": 0.7647691900504707,
+    "confusion_matrix": {
+      "labels": [
+        "no_viirs",
+        "viirs"
+      ],
+      "matrix": [
+        [
+          120739,
+          267018
+        ],
+        [
+          41383,
+          501328
+        ]
+      ]
+    },
+    "brier": 0.19672896075217025,
+    "brier_uncalibrated": 0.1969460897695642
+  },
+  "regression": {
+    "poisson_regression": {
+      "mae": 2.711679090123776,
+      "rmse": 5.4075783173067435,
+      "r2": 0.42687900284708946,
+      "spearman": 0.45819178623420037,
+      "mean_truth": 3.242033041437212,
+      "mean_prediction": 3.292013642191213,
+      "poisson_deviance": 3.982198203788152,
+      "seconds": 45.7
+    },
+    "hist_gradient_boosting": {
+      "mae": 2.5000008489204975,
+      "rmse": 4.703809238663654,
+      "r2": 0.5663492664864034,
+      "spearman": 0.512081751823278,
+      "mean_truth": 3.242033041437212,
+      "mean_prediction": 3.2196457829049843,
+      "poisson_deviance": 3.549257759641159,
+      "seconds": 91.0
+    }
+  },
+  "best": {
+    "classification": "hist_gradient_boosting",
+    "regression": "hist_gradient_boosting"
+  },
+  "test": {
+    "presence": {
+      "roc_auc": 0.7109316492102908,
+      "pr_auc": 0.7460217960052757,
+      "positive_rate": 0.5554521562411057,
+      "threshold": 0.38406932964708357,
+      "precision": 0.6132876974700919,
+      "recall": 0.9208060153004478,
+      "f1": 0.7362249075649383,
+      "confusion_matrix": {
+        "labels": [
+          "no_viirs",
+          "viirs"
+        ],
+        "matrix": [
+          [
+            311728,
+            823773
+          ],
+          [
+            112359,
+            1306423
+          ]
+        ]
+      }
+    },
+    "presence_calibrated": {
+      "roc_auc": 0.7108965076322711,
+      "pr_auc": 0.7438890928377577,
+      "positive_rate": 0.5554521562411057,
+      "threshold": 0.3890441587479039,
+      "precision": 0.6132876974700919,
+      "recall": 0.9208060153004478,
+      "f1": 0.7362249075649383,
+      "confusion_matrix": {
+        "labels": [
+          "no_viirs",
+          "viirs"
+        ],
+        "matrix": [
+          [
+            311728,
+            823773
+          ],
+          [
+            112359,
+            1306423
+          ]
+        ]
+      },
+      "brier": 0.21663098007410964,
+      "brier_uncalibrated": 0.21656728216587548,
+      "ci95": {
+        "pr_auc": [
+          0.7431003897393383,
+          0.7445886184439504
+        ],
+        "roc_auc": [
+          0.7102979638157312,
+          0.7115645901685864
+        ]
+      }
+    },
+    "count": {
+      "mae": 2.8120492039625504,
+      "rmse": 5.429756813185528,
+      "r2": 0.51520106118108,
+      "spearman": 0.47401840158055747,
+      "mean_truth": 3.355421462696185,
+      "mean_prediction": 3.579634902472144,
+      "poisson_deviance": 4.09792552321387,
+      "ci95": {
+        "mae": [
+          2.807339941796898,
+          2.8186329134257337
+        ]
+      }
+    },
+    "monthly_count": {
+      "sum_truth": 8570696.0,
+      "sum_prediction": 9143400.577591255,
+      "sum_ratio": 1.0668212450413894,
+      "region_months": 2407,
+      "monthly_mae": 582.6347056392858,
+      "monthly_ratio_median": 1.3406782593450055,
+      "monthly_ratio_p10": 0.8427335820820435,
+      "monthly_ratio_p90": 488391443.49434626,
+      "global_monthly_spearman": 0.9370629370629372,
+      "global_monthly": {
+        "2024-01": {
+          "truth": 620681.0,
+          "prediction": 605973.0049156749
+        },
+        "2024-02": {
+          "truth": 426156.0,
+          "prediction": 410639.72197730833
+        },
+        "2024-03": {
+          "truth": 384603.0,
+          "prediction": 378951.6908517547
+        },
+        "2024-04": {
+          "truth": 449802.0,
+          "prediction": 431374.11151737807
+        },
+        "2024-05": {
+          "truth": 439288.0,
+          "prediction": 473118.09009852965
+        },
+        "2024-06": {
+          "truth": 667256.0,
+          "prediction": 706454.9661643323
+        },
+        "2024-07": {
+          "truth": 860486.0,
+          "prediction": 1420278.169089437
+        },
+        "2024-08": {
+          "truth": 1909498.0,
+          "prediction": 1845070.6016070095
+        },
+        "2024-09": {
+          "truth": 1368683.0,
+          "prediction": 1349238.3602669653
+        },
+        "2024-10": {
+          "truth": 595199.0,
+          "prediction": 596677.6552533534
+        },
+        "2024-11": {
+          "truth": 360353.0,
+          "prediction": 433595.59336514986
+        },
+        "2024-12": {
+          "truth": 488691.0,
+          "prediction": 492028.6124843615
+        }
+      }
+    },
+    "frp": {
+      "mae": 5.853204096426824,
+      "rmse": 12.780267760652125,
+      "r2": 0.15017042618270093,
+      "spearman": 0.4830864046890502,
+      "mean_truth": 10.58453033186665,
+      "mean_prediction": 8.121603034646325
+    },
+    "frp_validation": {
+      "mae": 6.251750451245136,
+      "rmse": 13.842636561247632,
+      "r2": 0.13371913688580772,
+      "spearman": 0.4839387915668456,
+      "mean_truth": 11.070054209324818,
+      "mean_prediction": 8.276544233845494
+    },
+    "baselines": {
+      "presence_prevalence_pr_auc": 0.5554521562411057,
+      "presence_modis_detections_roc_auc": 0.6242943298820697,
+      "presence_modis_detections_pr_auc": 0.6556979502851099,
+      "count_ratio_times_modis": {
+        "mae": 3.1923792160626063,
+        "rmse": 6.277334146169634,
+        "r2": 0.35203522571244605,
+        "spearman": 0.3595071336016515,
+        "mean_truth": 3.355421462696185,
+        "mean_prediction": 3.2674662383313753,
+        "poisson_deviance": 5.27657331558476
+      },
+      "count_ratio_monthly": {
+        "sum_truth": 8570696.0,
+        "sum_prediction": 8346033.46564378,
+        "sum_ratio": 0.9737871306652085,
+        "region_months": 2407,
+        "monthly_mae": 1329.4340164773678,
+        "monthly_ratio_median": 2.2224071534719863,
+        "monthly_ratio_p10": 0.7499873205846646,
+        "monthly_ratio_p90": 1795021162.4196813,
+        "global_monthly_spearman": 0.9790209790209792,
+        "global_monthly": {
+          "2024-01": {
+            "truth": 620681.0,
+            "prediction": 643403.7954153856
+          },
+          "2024-02": {
+            "truth": 426156.0,
+            "prediction": 483397.40401845775
+          },
+          "2024-03": {
+            "truth": 384603.0,
+            "prediction": 456633.6384867803
+          },
+          "2024-04": {
+            "truth": 449802.0,
+            "prediction": 488168.5702681692
+          },
+          "2024-05": {
+            "truth": 439288.0,
+            "prediction": 518870.6122301955
+          },
+          "2024-06": {
+            "truth": 667256.0,
+            "prediction": 698965.085455762
+          },
+          "2024-07": {
+            "truth": 860486.0,
+            "prediction": 1171850.8455470903
+          },
+          "2024-08": {
+            "truth": 1909498.0,
+            "prediction": 1341483.9354380749
+          },
+          "2024-09": {
+            "truth": 1368683.0,
+            "prediction": 1027044.693353532
+          },
+          "2024-10": {
+            "truth": 595199.0,
+            "prediction": 522582.71599407936
+          },
+          "2024-11": {
+            "truth": 360353.0,
+            "prediction": 449195.0707897131
+          },
+          "2024-12": {
+            "truth": 488691.0,
+            "prediction": 544437.0986465389
+          }
+        }
+      },
+      "frp_ratio_times_modis": {
+        "mae": 8.138817656359182,
+        "rmse": 18.26881060932182,
+        "r2": -0.7364907797558935,
+        "spearman": 0.3765473584069818,
+        "mean_truth": 10.58453033186665,
+        "mean_prediction": 10.751199384365927
+      },
+      "frp_ratio_times_modis_validation": {
+        "mae": 8.647779848706831,
+        "rmse": 19.55230844674925,
+        "r2": -0.7282921880690194,
+        "spearman": 0.3695218675196085,
+        "mean_truth": 11.070054209324818,
+        "mean_prediction": 10.923620657919344
+      }
+    }
+  },
+  "frp_useful": true
+}

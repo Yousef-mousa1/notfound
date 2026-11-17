@@ -122,7 +122,8 @@ def summarize(modis: np.ndarray, viirs: np.ndarray) -> dict[str, object]:
             "viirs": quantile_table(b),
         },
         "limitations": [
-            "These are cross-sensor consistency metrics, not accuracy metrics: no independent reference data is used.",
+            "These are cross-sensor consistency metrics, not accuracy against true fire occurrence.",
+            "Offline year-holdout runs against observed VIIRS (2013, 2024) are held-out reference validation; they are separate from these pairwise consistency metrics.",
             "MODIS is not ground truth; agreement does not prove that either product is correct.",
             "Pairs depend on the matching radius/time window and are not independent samples.",
             "FRP is instantaneous power (MW); no energy is derived.",

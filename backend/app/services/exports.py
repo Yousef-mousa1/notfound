@@ -31,11 +31,13 @@ from harmonizer.store.jobs import utcnow
 from ..errors import ApiError
 from ..schemas.exports import (
     CsvExportRequest,
+    EstimateExportRequest,
     HarmonizedExportRequest,
     ObservationExportRequest,
     ValidationReportRequest,
 )
 from ..serialization import TIME_BASIS, jsonable, maybe_json
+from . import estimates as estimate_service
 from . import harmonization as harmonization_service
 from . import validation as validation_service
 from . import anomalies as anomaly_service
@@ -69,8 +71,10 @@ HARMONIZED_LIMITATIONS = [
 ]
 
 VALIDATION_LIMITATIONS = [
-    "These are cross-sensor consistency results, not accuracy: the project has no "
-    "independent reference dataset.",
+    "These are cross-sensor consistency results on matched pairs, not accuracy against "
+    "true fire occurrence.",
+    "The offline modeling layer separately ran year-holdout tests against observed VIIRS "
+    "for 2013 and 2024 (held-out reference validation); that is not what these endpoints measure.",
     "MODIS is not ground truth; agreement does not prove that either product is correct.",
     "Pairs depend on the chosen radius and time window and are not independent samples.",
     "FRP is instantaneous power (MW); no energy is derived.",
@@ -86,6 +90,23 @@ ANOMALY_LIMITATIONS = [
     "Baselines and scales are per (cell, sensor) series; comparing robust z between "
     "cells is not a physical comparison.",
     "Cells are grid cells, not administrative regions.",
+]
+
+ESTIMATE_LIMITATIONS = [
+    "These values are model-produced estimates imported from the offline modeling layer, "
+    "not FIRMS detections; rows with is_estimate=true are backcasts, not observations.",
+    "viirs_harmonized carries a coverage correction that lifts conditional estimates to "
+    "unconditional VIIRS scale; modis_raw is uncorrected. The two scales are different "
+    "quantities and are never merged into one detection count.",
+    "low/high are heuristic +/-35% bands, not a fitted confidence interval.",
+    "MODIS is not ground truth; agreement with it does not prove an estimate is correct.",
+    "Absence of a row is not absence of fire. The detection source contains detections "
+    "only and cannot distinguish no fire from no observation or cloud obstruction.",
+    "Only three years are observed (2013, 2024, 2025); no trend claim is made from them.",
+    "Year-holdout evaluation against observed VIIRS exists for 2013 and 2024 (held-out "
+    "reference validation); 2025 contributed to fitting and is not an independent holdout.",
+    "VIIRS did not exist before 20 January 2012, so the 2005, 2006 and 2012 backcasts "
+    "cannot be directly checked against VIIRS by design; they remain estimates.",
 ]
 
 
@@ -105,14 +126,23 @@ def _max_rows(config: dict[str, Any]) -> int:
     return int((config.get("exports") or {}).get("max_rows") or 500_000)
 
 
-def _guard_rows(rows: int, config: dict[str, Any]) -> None:
-    limit = _max_rows(config)
-    if rows > limit:
+def _estimate_max_rows(config: dict[str, Any]) -> int:
+    """The full harmonized estimate series exceeds the default 500k cap.
+
+    A dedicated, higher cap keeps the general guard intact for observation
+    exports while allowing the complete ~813k-row model series to be exported.
+    """
+    return int((config.get("exports") or {}).get("estimate_max_rows") or 1_000_000)
+
+
+def _guard_rows(rows: int, config: dict[str, Any], limit: int | None = None) -> None:
+    cap = _max_rows(config) if limit is None else limit
+    if rows > cap:
         raise ApiError(
             "export_too_large",
-            f"This export would contain {rows} rows, above the configured limit of {limit}.",
+            f"This export would contain {rows} rows, above the configured limit of {cap}.",
             413,
-            {"rows": rows, "max_rows": limit, "config_key": "exports.max_rows"},
+            {"rows": rows, "max_rows": cap},
         )
 
 
@@ -345,6 +375,24 @@ def _anomaly_run(database: Database, run_id: str | None) -> dict[str, Any]:
     return latest
 
 
+def _estimate_run(database: Database, run_id: str | None) -> dict[str, Any]:
+    if run_id:
+        run_row = estimate_service.get_run(database, run_id)
+        if run_row is None:
+            raise ApiError(
+                "model_run_not_found", f"No model run with id '{run_id}'.", 404
+            )
+        return run_row
+    latest = estimate_service.latest_run(database)
+    if latest is None:
+        raise ApiError(
+            "no_model_run",
+            "No model estimates are available. Register and import a run first.",
+            409,
+        )
+    return latest
+
+
 def _observation_builder(
     database: Database, config: dict[str, Any], request: ObservationExportRequest
 ) -> Builder:
@@ -533,6 +581,54 @@ def create_harmonized(
     )
 
 
+def create_estimates(
+    database: Database, config: dict[str, Any], request: EstimateExportRequest
+) -> dict[str, Any]:
+    """Export the model-produced harmonized estimate series plus metadata.
+
+    Reads only the ``estimates`` table; ``observations`` is never touched.
+    """
+    run_row = _estimate_run(database, request.run_id)
+    run_id = str(run_row["run_id"])
+
+    def build(
+        directory: Path,
+    ) -> tuple[list[dict[str, Any]], int, dict[str, Any], list[str], list[str]]:
+        query_sql, params = sql.estimates_export(run_id, request.scale)
+        frame = database.fetch_frame(query_sql, params)
+        _guard_rows(len(frame), config, limit=_estimate_max_rows(config))
+        file_name = safe_file_name(request.file_name, "harmonized_estimates")
+        files = [write_csv(frame, directory / file_name)]
+        inputs = {
+            "run_id": run_id,
+            "scale": request.scale,
+            "model_name": run_row.get("model_name"),
+            "method": run_row.get("method"),
+            "trained_years": run_row.get("trained_years"),
+            "test_year": run_row.get("test_year"),
+            "n_estimates": run_row.get("n_estimates"),
+            "rows": int(len(frame)),
+        }
+        steps = [
+            "Read the stored estimate rows of the model run (no observations read).",
+            "Applied an optional scale filter; the two scales are never merged.",
+            "Ordered rows by period, entity_id, then scale.",
+            "Wrote UTF-8 CSV with LF line endings and no value rewriting.",
+            "Wrote the metadata sidecar with inputs, steps and limitations.",
+        ]
+        return files, int(len(frame)), inputs, steps, ESTIMATE_LIMITATIONS
+
+    return _execute(
+        database,
+        config,
+        kind="estimate-series",
+        source="estimates",
+        params=request.model_dump(mode="json"),
+        run_id=run_id,
+        builder=build,
+    )
+
+
 def create_validation_report(
     database: Database, config: dict[str, Any], request: ValidationReportRequest
 ) -> dict[str, Any]:
@@ -549,8 +645,9 @@ def create_validation_report(
             "report_type": "validation_report",
             "time_basis": TIME_BASIS,
             "interpretation": (
-                "Cross-sensor consistency on matched pairs; this is not accuracy, "
-                "because the project has no independent reference dataset."
+                "Cross-sensor consistency on matched pairs, not accuracy against true fire "
+                "occurrence. Held-out reference validation against observed VIIRS for 2013 "
+                "and 2024 is a separate offline modeling step."
             ),
             "limitations": VALIDATION_LIMITATIONS,
             "software": software_versions(),

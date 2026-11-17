@@ -8,17 +8,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .observations import ObservationFilters, _parse_bbox
 
-PROCESSING_KINDS = (
-    "clean",
-    "filter",
-    "normalize",
-    "spatial-matching",
-    "temporal-matching",
-    "grid",
-    "aggregate",
-    "features",
-)
-
 
 class CleanRequest(ObservationFilters):
     """Recompute QC flags for the selected rows."""

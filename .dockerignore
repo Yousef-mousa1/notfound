@@ -1,0 +1,11 @@
+.git/
+frontend/
+modeling/data/
+modeling/src/
+modeling/.venv/
+backend/.venv/
+backend/data/interim/
+backend/data/processed/exports/
+**/__pycache__/
+*.pyc
+*.pyo

@@ -301,6 +301,45 @@ SCHEMA_STATEMENTS: tuple[str, ...] = (
         finished_at   TIMESTAMP
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS model_runs (
+        run_id            VARCHAR PRIMARY KEY,
+        model_name        VARCHAR NOT NULL,
+        method            VARCHAR NOT NULL,
+        trained_years     VARCHAR,
+        test_year         INTEGER,
+        validation_split  VARCHAR,
+        metrics           VARCHAR,
+        source_path       VARCHAR,
+        artifact_path     VARCHAR,
+        notes             VARCHAR,
+        created_at        TIMESTAMP NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS estimates (
+        run_id             VARCHAR NOT NULL,
+        level              VARCHAR NOT NULL,
+        entity_id          VARCHAR NOT NULL,
+        period             DATE    NOT NULL,
+        scale              VARCHAR NOT NULL,
+        value              DOUBLE  NOT NULL,
+        low                DOUBLE,
+        high               DOUBLE,
+        centroid_lat       DOUBLE,
+        centroid_lon       DOUBLE,
+        grid_degrees       DOUBLE,
+        is_estimate        BOOLEAN NOT NULL,
+        coverage_corrected BOOLEAN NOT NULL,
+        scale_factor       DOUBLE,
+        baseline           VARCHAR,
+        model              VARCHAR,
+        PRIMARY KEY (run_id, level, entity_id, period, scale)
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_estimates_run_period ON estimates (run_id, period)
+    """,
 )
 
 #: Columns inserted from a unified DataFrame, in storage order.

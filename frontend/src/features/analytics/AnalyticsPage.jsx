@@ -130,7 +130,7 @@ export default function AnalyticsPage() {
 
           <Panel
             title="Cross-sensor consistency"
-            description={`Matched pairs within the configured radius/time window: ${number(agreement.n_pairs)}. These are consistency metrics, not accuracy: no independent reference is used.`}
+            description={`Matched pairs within the configured radius/time window: ${number(agreement.n_pairs)}. These are cross-sensor consistency metrics, not accuracy against true fire occurrence. Held-out VIIRS reference validation for 2013/2024 is a separate offline step.`}
           >
             {agreement.n_pairs ? (
               <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-5">

@@ -20,6 +20,7 @@ from .routes.ui import ui_blueprint
 from .routes.v1.analytics import analytics_blueprint
 from .routes.v1.anomalies import anomalies_blueprint
 from .routes.v1.dashboard import dashboard_blueprint
+from .routes.v1.estimates import estimates_blueprint
 from .routes.v1.exports import exports_blueprint
 from .routes.v1.harmonization import harmonization_blueprint
 from .routes.v1.ingestion import ingestion_blueprint
@@ -81,6 +82,7 @@ def create_app(config_path: str | Path | None = None) -> Flask:
     app.register_blueprint(anomalies_blueprint, url_prefix=prefix)
     app.register_blueprint(analytics_blueprint, url_prefix=prefix)
     app.register_blueprint(dashboard_blueprint, url_prefix=prefix)
+    app.register_blueprint(estimates_blueprint, url_prefix=prefix)
     app.register_blueprint(exports_blueprint, url_prefix=prefix)
     app.register_blueprint(jobs_blueprint, url_prefix=prefix)
 

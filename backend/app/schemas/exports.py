@@ -19,7 +19,9 @@ EXPORT_SOURCE = Literal[
     "anomalies",
 ]
 
-EXPORT_KIND = Literal["csv", "observations", "harmonized-data", "validation-report"]
+EXPORT_KIND = Literal[
+    "csv", "observations", "harmonized-data", "validation-report", "estimate-series"
+]
 
 
 def _filters_used(model: ObservationFilters) -> bool:
@@ -70,6 +72,27 @@ class HarmonizedExportRequest(BaseModel):
 
     run_id: str | None = Field(
         default=None, description="Defaults to the latest successful run."
+    )
+    file_name: str | None = Field(default=None, max_length=80)
+
+
+class EstimateExportRequest(BaseModel):
+    """CSV export of the model-produced harmonized estimate series.
+
+    This reads the ``estimates`` table imported from the offline modeling
+    layer. It never reads or writes ``observations``. Values are model
+    estimates (including backcasts), not FIRMS detections.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: str | None = Field(
+        default=None, description="Defaults to the latest registered model run."
+    )
+    # Keep in sync with SCALES in schemas/estimates.py.
+    scale: Literal["viirs_harmonized", "modis_raw"] | None = Field(
+        default=None,
+        description="Export one scale only; defaults to both, kept in separate rows.",
     )
     file_name: str | None = Field(default=None, max_length=80)
 

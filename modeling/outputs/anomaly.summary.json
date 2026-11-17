@@ -1,0 +1,76 @@
+{
+  "rows": 406627,
+  "scored_rows": 406627,
+  "scale": "viirs_harmonized",
+  "baseline_years": [
+    2013,
+    2024,
+    2025
+  ],
+  "baseline_source": "observed only",
+  "levels": {
+    "region_month": 385095,
+    "global_month": 21532
+  },
+  "baseline_n": {
+    "2": 200413,
+    "3": 206214
+  },
+  "severity": {
+    "normal": 175748,
+    "very_high": 151217,
+    "very_low": 42308,
+    "high": 19635,
+    "low": 17719
+  },
+  "severity_by_year": {
+    "2005": {
+      "very_high": 35037,
+      "normal": 16500,
+      "very_low": 11159,
+      "high": 3038,
+      "low": 2869
+    },
+    "2006": {
+      "very_high": 34128,
+      "normal": 16676,
+      "very_low": 10936,
+      "low": 3136,
+      "high": 2824
+    },
+    "2012": {
+      "very_high": 35057,
+      "normal": 17621,
+      "very_low": 10941,
+      "low": 3151,
+      "high": 3141
+    },
+    "2013": {
+      "normal": 38574,
+      "very_high": 19364,
+      "high": 3674,
+      "very_low": 3045,
+      "low": 2776
+    },
+    "2024": {
+      "normal": 43265,
+      "very_high": 14614,
+      "high": 3651,
+      "very_low": 2687,
+      "low": 2562
+    },
+    "2025": {
+      "normal": 43112,
+      "very_high": 13017,
+      "very_low": 3540,
+      "high": 3307,
+      "low": 3225
+    }
+  },
+  "robust_z": {
+    "median": -0.03050056544367489,
+    "p10": -6.639788511772075,
+    "p90": 6.340213139079995
+  },
+  "note": "Leave-one-year-out robust anomaly. With few baseline years the MAD is coarse: read baseline_n before trusting a severity class."
+}

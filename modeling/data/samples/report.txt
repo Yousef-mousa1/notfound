@@ -1,0 +1,126 @@
+==============================================================================
+data/raw/modis_2005   (208 csv files)
+  first files: modis_2005_Afghanistan.csv, modis_2005_Albania.csv, modis_2005_Algeria.csv, modis_2005_Andorra.csv, modis_2005_Angola.csv ...
+  columns: ['latitude', 'longitude', 'brightness', 'scan', 'track', 'acq_date', 'acq_time', 'satellite', 'instrument', 'confidence', 'version', 'bright_t31', 'frp', 'daynight', 'type']
+  rows: 5,125,152   dates: 2005-01-01 -> 2005-12-31
+  lat -58.44..74.40   lon -178.97..179.62
+  satellite: Aqua: 3,396,078 (66.3%), Terra: 1,729,074 (33.7%)
+  instrument: MODIS: 5,125,152 (100.0%)
+  version: 6.2: 5,123,641 (100.0%), 6.03: 1,511 (0.0%)
+  daynight: D: 4,500,016 (87.8%), N: 625,136 (12.2%)
+  type: 0: 4,968,546 (96.9%), 2: 153,764 (3.0%), 3: 1,570 (0.0%), 1: 1,272 (0.0%)
+  confidence: 100.0% of values are numbers, 0.0% are text
+    numeric range 0..100; FIRMS classes: nominal (30-79): 3,408,306 (66.5%), high (80-100): 1,485,049 (29.0%), low (0-29): 231,797 (4.5%)
+  frp MW: min=0 p01=4.6 median=20.8 p99=376 max=13246.7   (>10000: 3)
+  rows per month: 2005-01=432,327, 2005-02=267,533, 2005-03=287,505, 2005-04=323,198, 2005-05=289,097, 2005-06=371,254, 2005-07=565,336, 2005-08=753,296, 2005-09=599,761, 2005-10=425,370, 2005-11=355,859, 2005-12=454,616
+  biggest files: modis_2005_Brazil.csv=631,834, modis_2005_Democratic_Republic_of_the_Congo.csv=453,944, modis_2005_Angola.csv=342,370, modis_2005_Russian_Federation.csv=299,035, modis_2005_Zambia.csv=216,263, modis_2005_Central_African_Republic.csv=190,445, modis_2005_Australia.csv=190,139, modis_2005_South_Sudan.csv=186,042
+  sample written: data/samples/modis_2005_sample.csv
+==============================================================================
+data/raw/modis_2006   (202 csv files)
+  first files: modis_2006_Afghanistan.csv, modis_2006_Aland_Islands.csv, modis_2006_Albania.csv, modis_2006_Algeria.csv, modis_2006_Angola.csv ...
+  columns: ['latitude', 'longitude', 'brightness', 'scan', 'track', 'acq_date', 'acq_time', 'satellite', 'instrument', 'confidence', 'version', 'bright_t31', 'frp', 'daynight', 'type']
+  rows: 4,688,046   dates: 2006-01-01 -> 2006-12-31
+  lat -58.44..76.18   lon -179.32..179.75
+  satellite: Aqua: 3,091,680 (65.9%), Terra: 1,596,366 (34.1%)
+  instrument: MODIS: 4,688,046 (100.0%)
+  version: 6.2: 4,687,142 (100.0%), 6.03: 904 (0.0%)
+  daynight: D: 4,134,520 (88.2%), N: 553,526 (11.8%)
+  type: 0: 4,548,962 (97.0%), 2: 136,170 (2.9%), 1: 1,756 (0.0%), 3: 1,158 (0.0%)
+  confidence: 100.0% of values are numbers, 0.0% are text
+    numeric range 0..100; FIRMS classes: nominal (30-79): 3,106,969 (66.3%), high (80-100): 1,365,017 (29.1%), low (0-29): 216,060 (4.6%)
+  frp MW: min=0 p01=4.6 median=20.9 p99=386.2 max=11777   (>10000: 2)
+  rows per month: 2006-01=320,398, 2006-02=209,908, 2006-03=274,353, 2006-04=311,336, 2006-05=317,803, 2006-06=325,648, 2006-07=511,635, 2006-08=648,907, 2006-09=587,085, 2006-10=344,778, 2006-11=379,183, 2006-12=457,012
+  biggest files: modis_2006_Democratic_Republic_of_the_Congo.csv=429,231, modis_2006_Brazil.csv=406,646, modis_2006_Russian_Federation.csv=387,888, modis_2006_Australia.csv=304,651, modis_2006_Angola.csv=288,031, modis_2006_Zambia.csv=186,422, modis_2006_Central_African_Republic.csv=175,162, modis_2006_Indonesia.csv=154,985
+  sample written: data/samples/modis_2006_sample.csv
+==============================================================================
+data/raw/modis_2012   (204 csv files)
+  first files: modis_2012_Afghanistan.csv, modis_2012_Albania.csv, modis_2012_Algeria.csv, modis_2012_American_Samoa.csv, modis_2012_Angola.csv ...
+  columns: ['latitude', 'longitude', 'brightness', 'scan', 'track', 'acq_date', 'acq_time', 'satellite', 'instrument', 'confidence', 'version', 'bright_t31', 'frp', 'daynight', 'type']
+  rows: 4,959,509   dates: 2012-01-01 -> 2012-12-31
+  lat -54.62..80.42   lon -176.48..179.59
+  satellite: Aqua: 3,203,384 (64.6%), Terra: 1,756,125 (35.4%)
+  instrument: MODIS: 4,959,509 (100.0%)
+  version: 6.2: 4,958,350 (100.0%), 6.03: 1,159 (0.0%)
+  daynight: D: 4,265,955 (86.0%), N: 693,554 (14.0%)
+  type: 0: 4,821,497 (97.2%), 2: 135,887 (2.7%), 3: 1,119 (0.0%), 1: 1,006 (0.0%)
+  confidence: 100.0% of values are numbers, 0.0% are text
+    numeric range 0..100; FIRMS classes: nominal (30-79): 3,230,272 (65.1%), high (80-100): 1,489,360 (30.0%), low (0-29): 239,877 (4.8%)
+  frp MW: min=-21.8 p01=4.6 median=21 p99=403.8 max=13228.9   (>10000: 3)
+  rows per month: 2012-01=387,982, 2012-02=262,455, 2012-03=364,932, 2012-04=315,357, 2012-05=295,361, 2012-06=463,958, 2012-07=622,111, 2012-08=632,545, 2012-09=566,941, 2012-10=384,783, 2012-11=286,635, 2012-12=376,449
+  biggest files: modis_2012_Russian_Federation.csv=483,865, modis_2012_Australia.csv=474,964, modis_2012_Democratic_Republic_of_the_Congo.csv=413,703, modis_2012_Brazil.csv=402,205, modis_2012_Angola.csv=313,167, modis_2012_Zambia.csv=218,784, modis_2012_South_Sudan.csv=172,117, modis_2012_Mozambique.csv=150,178
+  sample written: data/samples/modis_2012_sample.csv
+==============================================================================
+data/raw/modis_2024   (206 csv files)
+  first files: modis_2024_Afghanistan.csv, modis_2024_Albania.csv, modis_2024_Algeria.csv, modis_2024_American_Samoa.csv, modis_2024_Andorra.csv ...
+  columns: ['latitude', 'longitude', 'brightness', 'scan', 'track', 'acq_date', 'acq_time', 'satellite', 'instrument', 'confidence', 'version', 'bright_t31', 'frp', 'daynight', 'type']
+  rows: 4,848,247   dates: 2024-01-01 -> 2024-12-31
+  lat -53.66..81.90   lon -178.82..179.58
+  satellite: Aqua: 3,334,365 (68.8%), Terra: 1,513,882 (31.2%)
+  instrument: MODIS: 4,848,247 (100.0%)
+  version: 61.03: 4,848,247 (100.0%)
+  daynight: D: 4,008,478 (82.7%), N: 839,769 (17.3%)
+  type: 0: 4,653,131 (96.0%), 2: 185,419 (3.8%), 1: 7,465 (0.2%), 3: 2,232 (0.0%)
+  confidence: 100.0% of values are numbers, 0.0% are text
+    numeric range 0..100; FIRMS classes: nominal (30-79): 3,176,632 (65.5%), high (80-100): 1,426,716 (29.4%), low (0-29): 244,899 (5.1%)
+  frp MW: min=0 p01=4.5 median=19.3 p99=388.3 max=13490.3   (>10000: 16)
+  rows per month: 2024-01=370,609, 2024-02=280,595, 2024-03=269,008, 2024-04=288,886, 2024-05=308,877, 2024-06=407,830, 2024-07=674,875, 2024-08=771,884, 2024-09=590,618, 2024-10=306,386, 2024-11=263,153, 2024-12=315,526
+  biggest files: modis_2024_Brazil.csv=527,894, modis_2024_Democratic_Republic_of_the_Congo.csv=518,301, modis_2024_Angola.csv=381,943, modis_2024_Russian_Federation.csv=256,198, modis_2024_Australia.csv=223,807, modis_2024_Bolivia.csv=213,817, modis_2024_Zambia.csv=205,982, modis_2024_South_Sudan.csv=184,772
+  sample written: data/samples/modis_2024_sample.csv
+==============================================================================
+data/raw/modis_2025   (202 csv files)
+  first files: modis_2025_Afghanistan.csv, modis_2025_Albania.csv, modis_2025_Algeria.csv, modis_2025_American_Samoa.csv, modis_2025_Angola.csv ...
+  columns: ['latitude', 'longitude', 'brightness', 'scan', 'track', 'acq_date', 'acq_time', 'satellite', 'instrument', 'confidence', 'version', 'bright_t31', 'frp', 'daynight', 'type']
+  rows: 3,693,555   dates: 2025-01-01 -> 2025-12-31
+  lat -53.11..75.41   lon -179.31..179.75
+  satellite: Aqua: 2,625,509 (71.1%), Terra: 1,068,046 (28.9%)
+  instrument: MODIS: 3,693,555 (100.0%)
+  version: 61.03: 3,693,555 (100.0%)
+  daynight: D: 3,118,438 (84.4%), N: 575,117 (15.6%)
+  type: 0: 3,502,320 (94.8%), 2: 181,724 (4.9%), 1: 8,059 (0.2%), 3: 1,452 (0.0%)
+  confidence: 100.0% of values are numbers, 0.0% are text
+    numeric range 0..100; FIRMS classes: nominal (30-79): 2,504,700 (67.8%), high (80-100): 1,005,904 (27.2%), low (0-29): 182,951 (5.0%)
+  frp MW: min=-5.9 p01=4.3 median=17.9 p99=392.1 max=11247.1   (>10000: 2)
+  rows per month: 2025-01=349,815, 2025-02=253,142, 2025-03=288,721, 2025-04=207,461, 2025-05=221,452, 2025-06=263,212, 2025-07=422,416, 2025-08=557,236, 2025-09=397,335, 2025-10=317,270, 2025-11=213,746, 2025-12=201,749
+  biggest files: modis_2025_Democratic_Republic_of_the_Congo.csv=403,442, modis_2025_Angola.csv=295,922, modis_2025_Australia.csv=255,336, modis_2025_Brazil.csv=236,731, modis_2025_Zambia.csv=186,254, modis_2025_Canada.csv=156,313, modis_2025_South_Sudan.csv=153,134, modis_2025_Mozambique.csv=128,583
+  sample written: data/samples/modis_2025_sample.csv
+==============================================================================
+data/raw/viirs_2024   (218 csv files)
+  first files: viirs-snpp_2024_Afghanistan.csv, viirs-snpp_2024_Albania.csv, viirs-snpp_2024_Algeria.csv, viirs-snpp_2024_Angola.csv, viirs-snpp_2024_Antarctica.csv ...
+  columns: ['latitude', 'longitude', 'bright_ti4', 'scan', 'track', 'acq_date', 'acq_time', 'satellite', 'instrument', 'confidence', 'version', 'bright_ti5', 'frp', 'daynight', 'type']
+  rows: 20,976,982   dates: 2024-01-01 -> 2024-12-31
+  lat -87.84..78.74   lon -179.93..179.96
+  satellite: N: 20,976,982 (100.0%)
+  instrument: VIIRS: 20,976,982 (100.0%)
+  version: 2: 20,976,982 (100.0%)
+  daynight: D: 15,257,752 (72.7%), N: 5,719,230 (27.3%)
+  type: 0: 19,707,547 (93.9%), 2: 1,182,583 (5.6%), 3: 71,792 (0.3%), 1: 15,060 (0.1%)
+  confidence: 0.0% of values are numbers, 100.0% are text
+    text values: n: 17,450,255 (83.2%), l: 2,323,576 (11.1%), h: 1,203,151 (5.7%)
+  frp MW: min=-1.36 p01=0.49 median=5.02 p99=85.71 max=12470.2   (>10000: 2)
+  rows per month: 2024-01=1,717,742, 2024-02=1,480,541, 2024-03=1,435,270, 2024-04=1,471,823, 2024-05=1,343,391, 2024-06=1,566,829, 2024-07=1,630,363, 2024-08=3,575,242, 2024-09=2,670,979, 2024-10=1,552,616, 2024-11=1,078,857, 2024-12=1,453,329
+  biggest files: viirs-snpp_2024_Democratic_Republic_of_the_Congo.csv=1,983,865, viirs-snpp_2024_Brazil.csv=1,935,740, viirs-snpp_2024_Angola.csv=1,358,566, viirs-snpp_2024_Australia.csv=979,867, viirs-snpp_2024_Russian_Federation.csv=961,708, viirs-snpp_2024_Bolivia.csv=883,940, viirs-snpp_2024_South_Sudan.csv=786,699, viirs-snpp_2024_Zambia.csv=775,316
+  sample written: data/samples/viirs_2024_sample.csv
+==============================================================================
+data/raw/viirs_2025   (219 csv files)
+  first files: viirs-snpp_2025_Afghanistan.csv, viirs-snpp_2025_Aland_Islands.csv, viirs-snpp_2025_Albania.csv, viirs-snpp_2025_Algeria.csv, viirs-snpp_2025_American_Samoa.csv ...
+  columns: ['latitude', 'longitude', 'bright_ti4', 'scan', 'track', 'acq_date', 'acq_time', 'satellite', 'instrument', 'confidence', 'version', 'bright_ti5', 'frp', 'daynight', 'type']
+  rows: 18,415,101   dates: 2025-01-01 -> 2025-12-31
+  lat -84.72..83.48   lon -179.96..179.99
+  satellite: N: 18,415,101 (100.0%)
+  instrument: VIIRS: 18,415,101 (100.0%)
+  version: 2: 18,415,101 (100.0%)
+  daynight: D: 13,809,906 (75.0%), N: 4,605,195 (25.0%)
+  type: 0: 17,017,025 (92.4%), 2: 1,280,380 (7.0%), 3: 82,121 (0.4%), 1: 35,575 (0.2%)
+  confidence: 0.0% of values are numbers, 100.0% are text
+    text values: n: 15,204,927 (82.6%), l: 2,159,993 (11.7%), h: 1,050,181 (5.7%)
+  frp MW: min=0 p01=0.47 median=5.08 p99=85.69 max=2274.06   (>10000: 0)
+  rows per month: 2025-01=1,720,799, 2025-02=1,384,892, 2025-03=1,527,281, 2025-04=1,056,271, 2025-05=1,118,329, 2025-06=1,227,365, 2025-07=1,765,371, 2025-08=2,675,947, 2025-09=2,067,787, 2025-10=1,698,987, 2025-11=1,099,345, 2025-12=1,072,727
+  biggest files: viirs-snpp_2025_Democratic_Republic_of_the_Congo.csv=1,958,522, viirs-snpp_2025_Angola.csv=1,260,755, viirs-snpp_2025_Australia.csv=1,251,438, viirs-snpp_2025_Canada.csv=916,099, viirs-snpp_2025_Zambia.csv=862,158, viirs-snpp_2025_Brazil.csv=861,621, viirs-snpp_2025_Mozambique.csv=766,112, viirs-snpp_2025_South_Sudan.csv=718,447
+  sample written: data/samples/viirs_2025_sample.csv
+==============================================================================
+country coverage, MODIS vs VIIRS (by file name)
+  2005: only one sensor present
+  2006: only one sensor present
+  2012: only one sensor present
+  2024: MODIS 206 countries, VIIRS 218, only in MODIS: ['American_Samoa', 'Andorra', 'Aruba', 'Maldives', 'Seychelles'], only in VIIRS: ['Antarctica', 'British_Virgin_Islands', 'Cook_Islands', 'Falkland_Islands', 'Federated_States_of_Micronesia', 'Grenada', 'Jersey', 'Kiribati', 'Niue', 'Palau', 'Saint-Martin', 'Saint_Pierre_and_Miquelon', 'Sint_Maarten', 'Svalbard_and_Jan_Mayen', 'Turks_and_Caicos_Islands']
+  2025: MODIS 202 countries, VIIRS 219, only in MODIS: ['Maldives'], only in VIIRS: ['Aland_Islands', 'Antarctica', 'Aruba', 'Cook_Islands', 'Dominica', 'Faeroe_Islands', 'Falkland_Islands', 'Federated_States_of_Micronesia', 'Liechtenstein', 'Malta', 'Nauru', 'Niue', 'Palau', 'Saint-Martin', 'Saint_Helena']

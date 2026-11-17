@@ -14,7 +14,7 @@ from harmonizer.store import sql
 from ..errors import ApiError
 from ..schemas.analytics import AnalyticsQuery
 from ..schemas.anomalies import AnomalyQuery
-from . import analytics, anomalies, harmonization, observations, validation
+from . import analytics, anomalies, estimates, harmonization, observations, validation
 
 
 def overview(database: Database, query: AnalyticsQuery) -> dict[str, Any]:
@@ -72,6 +72,30 @@ def map_payload(database: Database, query: AnalyticsQuery, limit: int) -> dict[s
         "notes": [
             "Observation points are a bounded sample, not the full dataset.",
             "Anomaly points are flagged cell-days, not individual detections.",
+        ],
+    }
+
+
+def inspect_point(
+    database: Database, lat: float, lon: float, radius_km: float, limit: int
+) -> dict[str, Any]:
+    """Answer a map click from two independent stored sources.
+
+    Detections and model estimates are returned side by side, never summed.
+    The note makes the scientific limitation explicit: no record is not proof
+    that no fire occurred.
+    """
+    near = observations.nearby(database, lat, lon, radius_km, limit)
+    block = estimates.block_at(database, lat, lon)
+    return {
+        "point": {"lat": lat, "lon": lon, "radius_km": radius_km},
+        "detections": near,
+        "estimate": block,
+        "notes": [
+            "Detections are recorded FIRMS hotspots only; no record is NOT proof of no fire.",
+            "Cloud cover, overpass timing and small fires can all produce no detection.",
+            "The estimate covers the whole 1-degree block, not the exact clicked point.",
+            "Detections and estimates come from separate stores and are never merged.",
         ],
     }
 

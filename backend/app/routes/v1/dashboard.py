@@ -6,8 +6,11 @@ from flask import Blueprint, current_app
 
 from ...db import get_db
 from ...schemas.analytics import AnalyticsQuery
+from ...schemas.estimates import EstimateQuery
+from ...schemas.inspect import InspectQuery
 from ...serialization import TIME_BASIS, jsonable
 from ...services import dashboard as service
+from ...services import estimates as estimates_service
 from ..common import ok, parse_query
 
 dashboard_blueprint = Blueprint("dashboard", __name__)
@@ -37,10 +40,40 @@ def map_payload():
     )
 
 
+@dashboard_blueprint.get("/dashboard/inspect")
+def inspect_point():
+    """Inspect a map click: recorded detections + model estimate for the block."""
+    query = parse_query(InspectQuery)
+    payload = service.inspect_point(
+        get_db(), query.lat, query.lon, query.radius_km, query.limit
+    )
+    return ok(
+        jsonable(payload),
+        {
+            "time_basis": TIME_BASIS,
+            "note": "No detection record is not proof that no fire occurred.",
+        },
+    )
+
+
 @dashboard_blueprint.get("/dashboard/calendar")
 def calendar():
     """Daily counts per sensor for a calendar view."""
     return ok(jsonable(service.calendar(get_db(), _query())), {"time_basis": TIME_BASIS})
+
+
+@dashboard_blueprint.get("/dashboard/estimates-calendar")
+def estimates_calendar():
+    """Monthly model-produced series, separate from raw detections."""
+    query = parse_query(EstimateQuery)
+    payload = estimates_service.calendar_series(get_db(), query.run_id)
+    return ok(
+        jsonable(payload),
+        {
+            "time_basis": TIME_BASIS,
+            "note": "Model estimates only; observations are never modified or merged here.",
+        },
+    )
 
 
 @dashboard_blueprint.get("/dashboard/anomalies")

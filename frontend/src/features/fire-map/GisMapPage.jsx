@@ -73,6 +73,15 @@ const STYLE = {
       type: "vector",
       url: "https://demotiles.maplibre.org/tiles/tiles.json",
     },
+    // OpenMapTiles through OpenFreeMap (no API key): admin boundaries at
+    // levels 2/4/6 and place labels (city/town/village). Names are read in
+    // Arabic when available. Remote tiles only - no local data is stored.
+    admin: {
+      type: "vector",
+      url: "https://tiles.openfreemap.org/planet",
+      attribution:
+        "Administrative boundaries © OpenStreetMap contributors, via OpenFreeMap",
+    },
   },
   layers: [
     { id: "space", type: "background", paint: { "background-color": "#02060f" } },
@@ -165,7 +174,7 @@ function toFeatureCollection(json) {
   return { type: "FeatureCollection", features };
 }
 
-function openPopup(map, lngLat, rows) {
+function buildPopupDom(rows) {
   const el = document.createElement("div");
   el.className = "gis-popup";
   for (const [k, v] of rows) {
@@ -177,7 +186,15 @@ function openPopup(map, lngLat, rows) {
     row.append(key, val);
     el.append(row);
   }
-  new maplibregl.Popup({ offset: 10 }).setLngLat(lngLat).setDOMContent(el).addTo(map);
+  return el;
+}
+
+function openPopup(map, lngLat, rows) {
+  const popup = new maplibregl.Popup({ offset: 10 })
+    .setLngLat(lngLat)
+    .setDOMContent(buildPopupDom(rows))
+    .addTo(map);
+  return popup;
 }
 
 const FRP = ["to-number", ["coalesce", ["get", "frp"], ["get", "frp_mw"]], 0];
@@ -372,7 +389,16 @@ export default function GisMapPage() {
         source: "countries",
         "source-layer": "centroids",
         layout: {
-          "text-field": ["get", "NAME"],
+          // Display-only label choice: the external Natural Earth tiles name
+          // this country "Israel"; render "Palestine" instead. This changes no
+          // border geometry and no fire data. English is used because MapLibre
+          // does not shape Arabic RTL, so Arabic labels render mirrored.
+          "text-field": [
+            "match",
+            ["downcase", ["coalesce", ["get", "NAME"], ""]],
+            "israel", "Palestine",
+            ["get", "NAME"],
+          ],
           "text-font": ["Open Sans Semibold"],
           "text-size": ["interpolate", ["linear"], ["zoom"], 0, 9, 3, 12, 6, 16],
           "text-max-width": 7,
@@ -384,29 +410,70 @@ export default function GisMapPage() {
         },
       });
 
-      map.on("click", "fires-points", (e) => {
-        const f = e.features?.[0];
-        if (!f) return;
-        const p = f.properties ?? {};
-        openPopup(map, f.geometry.coordinates, [
-          ["Sensor", String(p.sensor ?? "—").toUpperCase()],
-          ["FRP", `${Number(p.frp ?? 0).toFixed(1)} MW`],
-          ["Time (UTC)", p.time || "—"],
-        ]);
-      });
+      // Admin levels appear progressively with zoom:
+      //   z3+ governorate/state (admin_level 4)
+      //   z5+ district/county   (admin_level 6)
+      //   z4+ city / z6+ town / z8+ village labels
+      // Each level has its own line layer so minzoom controls when it appears.
+      const adminLevels = [
+        { id: "admin4", level: 4, min: 3, color: "rgba(160,190,225,0.45)", width: 0.7 },
+        { id: "admin6", level: 6, min: 5, color: "rgba(140,175,215,0.40)", width: 0.6 },
+      ];
+      for (const a of adminLevels) {
+        map.addLayer({
+          id: `admin-${a.id}`,
+          type: "line",
+          source: "admin",
+          "source-layer": "boundary",
+          minzoom: a.min,
+          filter: ["==", ["get", "admin_level"], a.level],
+          layout: { "line-join": "round" },
+          paint: {
+            "line-color": a.color,
+            "line-width": [
+              "interpolate", ["linear"], ["zoom"],
+              a.min, a.width, 10, a.width * 2.2,
+            ],
+            "line-dasharray": [2, 2],
+          },
+        });
+      }
 
-      map.on("click", "grid-fill", (e) => {
-        if (map.queryRenderedFeatures(e.point, { layers: ["fires-points"] }).length) return;
-        const f = e.features?.[0];
-        if (!f) return;
-        const p = f.properties ?? {};
-        openPopup(map, e.lngLat, [
-          ["Detections", Number(p.n).toLocaleString()],
-          ["MODIS", Number(p.modis).toLocaleString()],
-          ["VIIRS", Number(p.viirs).toLocaleString()],
-          ["Max FRP", `${Number(p.max_frp ?? 0).toFixed(1)} MW`],
-        ]);
-      });
+      const placeClasses = [
+        { key: "city", min: 4, size: 13, font: "Noto Sans Bold" },
+        { key: "town", min: 6, size: 11, font: "Noto Sans Regular" },
+        { key: "village", min: 8, size: 10, font: "Noto Sans Regular" },
+      ];
+      for (const p of placeClasses) {
+        map.addLayer({
+          id: `place-${p.key}`,
+          type: "symbol",
+          source: "admin",
+          "source-layer": "place",
+          minzoom: p.min,
+          filter: ["==", ["get", "class"], p.key],
+          layout: {
+            // Use the English name: MapLibre does not shape Arabic RTL, so
+            // Arabic labels render with reversed/mirrored letters.
+            "text-field": [
+              "coalesce",
+              ["get", "name:en"],
+              ["get", "name:latin"],
+              ["get", "name"],
+            ],
+            "text-font": [p.font],
+            "text-size": p.size,
+            "text-max-width": 8,
+            "text-anchor": "center",
+            "text-allow-overlap": false,
+          },
+          paint: {
+            "text-color": "#f2e9d8",
+            "text-halo-color": "rgba(2,6,15,0.95)",
+            "text-halo-width": 1.4,
+          },
+        });
+      }
 
       for (const layer of ["grid-fill", "fires-points"]) {
         map.on("mouseenter", layer, () => {
@@ -416,6 +483,66 @@ export default function GisMapPage() {
           map.getCanvas().style.cursor = "";
         });
       }
+
+      // One click handler for the whole map. Every click asks the backend for
+      // the inspection popup (recorded detections + model block). If the click
+      // also hits a fire point or a grid cell, its precise details are added
+      // to the same popup. A single popup and one controller avoid the stacked
+      // / stuck popups that came from competing per-layer click handlers.
+      let inspectController;
+      let activePopup;
+      map.on("click", async (e) => {
+        inspectController?.abort();
+        inspectController = new AbortController();
+        const signal = inspectController.signal;
+
+        const detailRows = [];
+        const pointFeat = map.queryRenderedFeatures(e.point, { layers: ["fires-points"] })[0];
+        const gridFeat = pointFeat
+          ? null
+          : map.queryRenderedFeatures(e.point, { layers: ["grid-fill"] })[0];
+        if (pointFeat) {
+          const p = pointFeat.properties ?? {};
+          detailRows.push(["Sensor", String(p.sensor ?? "—").toUpperCase()]);
+          detailRows.push(["FRP", `${Number(p.frp ?? 0).toFixed(1)} MW`]);
+          detailRows.push(["Time (UTC)", p.time || "—"]);
+        } else if (gridFeat) {
+          const p = gridFeat.properties ?? {};
+          detailRows.push(["Cell detections", Number(p.n).toLocaleString()]);
+          detailRows.push(["MODIS", Number(p.modis).toLocaleString()]);
+          detailRows.push(["VIIRS", Number(p.viirs).toLocaleString()]);
+          detailRows.push(["Max FRP", `${Number(p.max_frp ?? 0).toFixed(1)} MW`]);
+        }
+
+        activePopup?.remove();
+        activePopup = openPopup(map, e.lngLat, [...detailRows, ["Inspecting…", ""]]);
+        try {
+          const url = `/api/v1/dashboard/inspect?lat=${e.lngLat.lat.toFixed(5)}&lon=${e.lngLat.lng.toFixed(5)}&radius_km=10`;
+          const res = await fetchJson(url, signal);
+          if (signal.aborted) return;
+          const d = res.data;
+          const det = d.detections ?? {};
+          const est = d.estimate;
+          const rows = [
+            ...detailRows,
+            ["Recorded detections (10 km)", Number(det.count ?? 0).toLocaleString()],
+            ["Last detected (UTC)", String(det.last_detected ?? "—").slice(0, 10)],
+          ];
+          if (est?.available && est.scales?.viirs_harmonized) {
+            const s = est.scales.viirs_harmonized;
+            rows.push(["Model block (1°)", `${est.entity_id} · ${est.grid_degrees}°`]);
+            rows.push(["Latest estimate", Number(s.latest_value ?? 0).toLocaleString()]);
+            rows.push(["Estimate period", String(s.latest_period ?? "—").slice(0, 7)]);
+          }
+          rows.push(["No record ≠ no fire", "see notes"]);
+          activePopup.setDOMContent(buildPopupDom(rows));
+        } catch (err) {
+          if (signal.aborted) return;
+          activePopup.setDOMContent(
+            buildPopupDom([...detailRows, ["Inspect failed", String(err?.message ?? err)]])
+          );
+        }
+      });
 
       setReady(true);
       startSpin();
@@ -450,13 +577,23 @@ export default function GisMapPage() {
     map.setPaintProperty("lights", "raster-opacity", l.lights);
   }, [ready, look]);
 
-  // أسماء الدول + الحدود
+  // أسماء الدول + الحدود الإدارية + أسماء المدن (كلهم مع زرار واحد)
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map || !map.getLayer("country-labels")) return;
     const v = showLabels ? "visible" : "none";
-    map.setLayoutProperty("country-labels", "visibility", v);
-    map.setLayoutProperty("country-borders", "visibility", v);
+    const layers = [
+      "country-labels",
+      "country-borders",
+      "admin-admin4",
+      "admin-admin6",
+      "place-city",
+      "place-town",
+      "place-village",
+    ];
+    for (const id of layers) {
+      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", v);
+    }
   }, [ready, showLabels]);
 
   // رسم الخلايا (بيتحدّث فوراً مع زراير MODIS / VIIRS)

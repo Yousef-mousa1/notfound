@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Map,
   CalendarDays,
+  CalendarRange,
   ChartNoAxesCombined,
   Download,
   Flame,
@@ -23,6 +24,11 @@ const navigation = [
     label: "Activity Calendar",
     path: "/calendar",
     icon: CalendarDays,
+  },
+  {
+    label: "Harmonized Calendar",
+    path: "/harmonized",
+    icon: CalendarRange,
   },
   {
     label: "Analytics",

@@ -1,9 +1,9 @@
 """Validation service: cross-sensor consistency on matched pairs.
 
-There is no independent reference dataset in this project, so the endpoints
-never call these numbers accuracy. They quantify how MODIS and VIIRS disagree
-on pairs that satisfy the requested radius/time window, and every response
-states that limitation plus the pair count.
+These endpoints quantify how MODIS and VIIRS disagree on pairs that satisfy the
+requested radius/time window; they do not measure accuracy against true fire
+occurrence. Held-out reference validation against observed VIIRS for 2013 and
+2024 is performed offline in the modeling layer, not here.
 """
 
 from __future__ import annotations
@@ -50,7 +50,9 @@ PAIR_COLUMNS = (
 )
 
 LIMITATIONS = [
-    "These are cross-sensor consistency metrics, not accuracy metrics: no independent reference is used.",
+    "These are cross-sensor consistency metrics, not accuracy against true fire occurrence.",
+    "Offline year-holdout runs against observed VIIRS (2013, 2024) are held-out reference "
+    "validation; they are separate from these pairwise consistency metrics.",
     "MODIS is not ground truth; agreement does not prove that either product is correct.",
     "Pairs depend on the matching radius/time window and are not independent samples.",
     "FRP is instantaneous power (MW); no energy is derived.",
@@ -226,7 +228,7 @@ def mae_metric(database: Database, run_id: str | None) -> dict[str, Any]:
         "raw_mw": _clean(mae(a, b)),
         "raw_mw_unit": "MW",
         "definition": "mean(|MODIS - VIIRS|) across matched pairs; both directions folded into one absolute value.",
-        "note": "Cross-sensor consistency, not accuracy: no independent reference is used.",
+        "note": "Cross-sensor consistency on matched pairs, not accuracy against true fire occurrence.",
     }
 
 

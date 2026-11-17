@@ -55,7 +55,7 @@ def test_metric_endpoints_are_consistency_not_accuracy(client):
         body = response.get_json()["data"]
         assert body["n_pairs"] == 12
         assert body["run_id"] == run_id
-        assert "not accuracy metrics" in body["limitations"][0]
+        assert "not accuracy against true fire occurrence" in body["limitations"][0]
         assert body["metric"] == path
 
     bias = client.get(f"/api/v1/validation/metrics/bias?run_id={run_id}").get_json()["data"]

@@ -14,7 +14,6 @@ from typing import Any
 
 from .db import Database
 
-TERMINAL_STATUSES = frozenset({"succeeded", "failed", "cancelled"})
 CANCELLABLE_STATUSES = frozenset({"queued", "running"})
 
 

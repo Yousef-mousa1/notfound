@@ -106,10 +106,6 @@ def _insert_source(
     return _source_row(database, source_id) or {}
 
 
-def _import_row(database: Database, import_id: str) -> dict[str, Any] | None:
-    return database.fetch_one("SELECT * FROM imports WHERE import_id = ?", [import_id])
-
-
 def import_path(
     database: Database,
     config: dict[str, Any],

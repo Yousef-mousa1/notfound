@@ -1,0 +1,68 @@
+{
+  "rows": 813254,
+  "region_deg": 1.0,
+  "years": [
+    2005,
+    2006,
+    2012,
+    2013,
+    2024,
+    2025
+  ],
+  "observed_years": [
+    2013,
+    2024,
+    2025
+  ],
+  "backcast_years": [
+    2005,
+    2006,
+    2012
+  ],
+  "backcast_years_dropped_as_observed": [],
+  "global_k": 2.4509834212859585,
+  "k_backcast_rake_factor": 0.7903141876602273,
+  "k_baseline_usage": {
+    "region_month_raked": 154677,
+    "region_month_year": 136489,
+    "global_month": 86631,
+    "region_month": 28830
+  },
+  "totals": {
+    "modis_raw": {
+      "observed": 26575016.0,
+      "estimated": 0.0
+    },
+    "viirs_harmonized": {
+      "observed": 53268829.0,
+      "estimated": 64111956.0020426
+    }
+  },
+  "totals_by_year": {
+    "2005": {
+      "modis_raw": 4968546.0,
+      "viirs_harmonized": 22160855.417966165
+    },
+    "2006": {
+      "modis_raw": 4548962.0,
+      "viirs_harmonized": 20647676.186850812
+    },
+    "2012": {
+      "modis_raw": 4821497.0,
+      "viirs_harmonized": 21303424.397225622
+    },
+    "2013": {
+      "modis_raw": 4086914.0,
+      "viirs_harmonized": 17520494.0
+    },
+    "2024": {
+      "modis_raw": 4649546.0,
+      "viirs_harmonized": 19263601.0
+    },
+    "2025": {
+      "modis_raw": 3499551.0,
+      "viirs_harmonized": 16484734.0
+    }
+  },
+  "note": "viirs_harmonized = (observed VIIRS in the MODIS table OR MODIS->VIIRS backcast) * k, where k restores VIIRS-only cell-days. modis_raw is uncorrected MODIS detections. low/high are a heuristic +/-35% band on corrected rows, not a fitted interval. Backcast k is raked to the observed global ratio; use --no-rake-k to see the unmodified estimate."
+}

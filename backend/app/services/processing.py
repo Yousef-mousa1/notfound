@@ -203,11 +203,13 @@ def _normalize(
     }
 
     if params.apply_confidence:
-        mapping = (config.get("confidence") or {})
+        mapping = config.get("confidence") or {}
         usable = {
-            sensor: values
-            for sensor, values in mapping.items()
-            if isinstance(values, dict) and values
+            sensor: spec
+            for sensor, spec in mapping.items()
+            if isinstance(spec, dict)
+            and isinstance(spec.get("mapping"), dict)
+            and spec["mapping"]
         }
         if not usable:
             report["confidence_mapping"] = {
@@ -216,27 +218,76 @@ def _normalize(
             }
         else:
             updated = 0
-            for sensor, values in usable.items():
-                cases = " ".join("WHEN ? THEN ?" for _ in values)
-                flat: list[Any] = [item for pair in values.items() for item in pair]
+            per_sensor: dict[str, Any] = {}
+            for sensor, spec in usable.items():
+                pairs = spec["mapping"]
+                method = spec.get("method", "exact")
+                source = spec.get("source", "Not specified")
+                if method not in {"exact", "ranges"}:
+                    per_sensor[sensor] = {
+                        "applied": False,
+                        "reason": f"Unknown confidence method: {method}",
+                    }
+                    continue
+
+                bind: list[Any] = []
+                if method == "ranges":
+                    clauses: list[str] = []
+                    for label, bounds in pairs.items():
+                        if not (isinstance(bounds, (list, tuple)) and len(bounds) == 2):
+                            continue
+                        clauses.append(
+                            "WHEN TRY_CAST(confidence_raw AS DOUBLE) BETWEEN ? AND ? THEN ?"
+                        )
+                        bind.extend([bounds[0], bounds[1], label])
+                    case_sql = (
+                        f"CASE {' '.join(clauses)} ELSE confidence_class END"
+                        if clauses
+                        else None
+                    )
+                else:
+                    cases = " ".join("WHEN ? THEN ?" for _ in pairs)
+                    case_sql = f"CASE confidence_raw {cases} ELSE confidence_class END"
+                    bind.extend(item for pair in pairs.items() for item in pair)
+
+                if not case_sql:
+                    per_sensor[sensor] = {
+                        "applied": False,
+                        "reason": "No valid range pairs were configured.",
+                    }
+                    continue
+
                 database.execute(
-                    "UPDATE observations SET confidence_class = "
-                    f"CASE confidence_raw {cases} ELSE confidence_class END "
-                    "WHERE sensor = ?",
-                    [*flat, sensor],
+                    f"UPDATE observations SET confidence_class = {case_sql} WHERE sensor = ?",
+                    [*bind, sensor],
                 )
-                updated += int(
+                rows = int(
                     database.fetch_scalar(
-                        "SELECT count(*) FROM observations WHERE sensor = ?", [sensor]
+                        "SELECT count(*) FROM observations "
+                        "WHERE sensor = ? AND confidence_class IS NOT NULL",
+                        [sensor],
                     )
                     or 0
                 )
-            report["confidence_mapping"] = {"applied": True, "rows": updated}
+                updated += rows
+                per_sensor[sensor] = {
+                    "applied": True,
+                    "rows": rows,
+                    "method": method,
+                    "source": source,
+                }
+
+            report["confidence_mapping"] = {
+                "applied": True,
+                "rows": updated,
+                "sensors": per_sensor,
+            }
             report["actions"].append("Applied configured confidence mapping.")
 
     report["notes"] = [
         "Structural normalization (types, zero-padded times, platform mapping) happens at import.",
-        "confidence_class stays NULL until an official mapping is verified and configured.",
+        "VIIRS classes use official FIRMS l/n/h labels; MODIS numeric bands are heuristic "
+        "because FIRMS defines classes but publishes no numeric cut-offs.",
     ]
     return report
 

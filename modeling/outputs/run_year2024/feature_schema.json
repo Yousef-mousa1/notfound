@@ -1,0 +1,33 @@
+{
+  "features": [
+    "modis_detections",
+    "modis_frp_mean",
+    "modis_frp_max",
+    "modis_frp_sum",
+    "modis_frp_std",
+    "modis_bt_primary_mean",
+    "modis_bt_primary_max",
+    "modis_bt_secondary_mean",
+    "modis_bt_secondary_max",
+    "modis_scan_mean",
+    "modis_track_mean",
+    "modis_hour_mean",
+    "modis_night_share",
+    "modis_platforms",
+    "modis_conf_low",
+    "modis_conf_nominal",
+    "modis_conf_high",
+    "modis_neighbour_count",
+    "modis_prev1_count",
+    "modis_prev2_count",
+    "modis_prev3_count",
+    "modis_prev3_mean",
+    "doy_sin",
+    "doy_cos",
+    "hour_sin",
+    "hour_cos",
+    "cell_lat",
+    "cell_lon"
+  ],
+  "grid_degrees": 0.05
+}

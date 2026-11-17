@@ -1,25 +1,48 @@
-# حالة الشغل — 2026-11-14
+# حالة الشغل — 2026-11-17
 
-## الداتا الجديدة (من المستخدم)
-- `/home/ubuntu/upload/MODISDataset.csv` → نُسخ إلى `/home/ubuntu/modeling/data/raw/global2025/MODIS_2025_global.csv` (131,653 صف، 2025-01-01 → 2025-12-01، عالمي)
-- `/home/ubuntu/upload/VIIRSDataset.csv` → `/home/ubuntu/modeling/data/raw/global2025/VIIRS_SNPP_2025_global.csv` (129,762 صف، نفس الفترة، عالمي)
-- **مشكلة**: الملفان **عيّنة عشوائية رقيقة** من الداتا العالمية (~393 detection/يوم لكل حساس بدل آلاف)، ومش مأخوذين من نفس الشرائح المكانية/الزمنية، فالـ overlap على 0.05° = 4.1% فقط.
-- **VIIRS file headers** = أسماء أعمدة MODIS (`brightness`, `bright_t31`) بدل `bright_ti4/bright_ti5`؛ `instrument=SNPP`. اتظبط في `src/build_cellday.py` عبر `column_mapping()`.
+> طريقة التشغيل الكاملة والمنهجية في `modeling/README.md`.
+> الملف ده سجل حالة بس.
 
-## اللي اتعمل على الداتا الجديدة
-- `data/processed/cellday_2025_global.parquet` (0.05°): 119,846 MODIS cell-day، positive rate 4.07% (overlap ضعيف جدًا → غير صالح للتدريب).
-- `data/processed/cellday_2025_global_1deg.parquet` (1.0°): 74,443 cell-day، positive rate 36.25%.
-- التدريب: `outputs/run_global2025_1deg/` — best cls = hist_gradient_boosting__none (ROC 0.786، PR 0.672، F1 0.642)، best reg = xgboost__none (MAE 0.632، R² 0.350، Spearman 0.505)، FRP R² 0.007.
-- grid option اتضاف: `build_cellday.py --grid 1.0` و`train.py --grid 1.0`.
+## المسارات (النسخة الحالية)
+- المشروع: `/Users/yo/Documents/notfound/modeling`
+- Python: `.venv/bin/python` (3.13.11) — مفيش `python` على الـPATH
+- الداتا الخام: `data/raw/{modis,viirs}_YYYY/...` (ملفات بلد-بلد)
+- المعالَج: `data/processed/cellday_YYYY.parquet` + `.coverage.parquet` + `.summary.json`
+- المخرجات: `outputs/harmonized.parquet`، `outputs/anomaly.parquet`، `outputs/figures/`
+- الباك اند: `../backend` — جداول `model_runs` + `estimates`، صفحة `/harmonized`
 
-## المطلوب من المستخدم
-عيّنات **متطابقة** (نفس bbox + نفس التواريخ، بدون تنقيص عشوائي):
-```
-python tools\sample_firms.py --input "modis.csv" --out dataSets --bbox W,S,E,N --start 2025-01-01 --end 2025-03-31
-python tools\sample_firms.py --input "viirs.csv" --out dataSets --bbox W,S,E,N --start 2025-01-01 --end 2025-03-31
-```
+## اللي خلص
+- `build_cellday.py`: نافذة VIIRS لكل بلد، جدول `k` لكل (بلوك 1°، شهر)، تقرير تغطية.
+- `train.py`: `--split year`, isotonic calibration + Brier, تقرير شهري region×month,
+  bootstrap CI، قرار FRP على الـvalidation، `--refit-all`.
+- `predict.py`: مفيش تصفير للـcounts غير الشرطية، بيعاير الاحتمال، بيكتب
+  `viirs_like_frp_expected`.
+- `harmonize.py`: مقياسين، تصحيح `k` للمرصود والـbackcast، **raking** لـ `k`
+  على المتوسط العالمي، مخرج طويل + عريض + `--csv`.
+- `anomaly.py`: LOO لكل (region×month_of_year), median/MAD/p10/p90، percentile,
+  robust_z، severity، ترتيب احتياطي 3 مستويات، `--include-estimates`.
+- `make_figures.py`: شكل الانتقال + شكل الكالندر.
+- `run_all.sh`: كل الخطوات في أمر واحد.
+- تقييم 2024 و 2013 (year holdout) + refit نهائي + 3 backcasts + سلسلة + شواذ.
+- **Option B** في الباك اند: جداول + 6 endpoints + `/dashboard/estimates-calendar`
+  + `scripts/import_model_outputs.py` + 4 اختبارات (المجموع 135/135 نجحوا).
+- فرونت: صفحة `/harmonized` منفصلة عن كالندر detections. build + lint نجحوا.
 
-## أدوات اتضافت للباكدج
-- `tools/sample_firms.py` (فلترة bbox + تاريخ، streaming)
-- `tools/split_firms_csv.py` (تقسيم ملفات كبيرة لأجزاء 400k صف)
-- الباكدج: `/home/ubuntu/pyroscope_full_project.zip` (يحتاج إعادة بناء بعد آخر تعديلات tools)
+## أرقام نهائية
+- التقييم 2024: PR 0.744 / Brier 0.217 / count MAE 2.812 / monthly ratio 1.067.
+- التقييم 2013 (extrapolation): PR 0.799 / count MAE 2.432 / monthly ratio 0.977.
+- rake factor = 0.790. بعده نسبة VIIRS/MODIS: 4.42–4.54 (backcast) مقابل 4.14–4.71 (مرصود).
+- الاستيراد: `est_pyro_2026_v1` — 813,254 صف، 2005-01 → 2025-12.
+
+## تنظيف (2026-11-17)
+اتشالت: تجربة Nov-14 القديمة (`run_global2025_1deg`, تقريرها)، ملفات smoke
+المؤقتة، نسخ الـCSV المكررة، `outputs/backcast/`, و`frontend/dist`.
+الـ backcasts تتولد تاني بـ`run_all.sh`. المخرجات النهائية والـDuckDB سليمة.
+
+## اللي باقي / تحذيرات
+- التقييم مقابل VIIRS مرصود ومحجوز موجود لـ2013 و2024 بس (year holdout)؛ 2025 ساهمت في التدريب فمش holdout مستقل.
+- مفيش VIIRS أصلاً قبل 20 يناير 2012، فـbackcasts 2005/2006/2012 مش قابلة للتحقق المباشر بالتصميم — مش "دقة عالية".
+- `baseline_n` صغير (2–3 سنين) في طبقة الشواذ — الشدة خشنة.
+- `low/high` heuristic ±35% مش CI.
+- تجميع حسب الدولة (country-level) مش متاح في السلسلة — الـregion بلوك شبكة.
+- LightGBM/XGBoost محتاجين `libomp` (brew timeout). sklearn بيكمّل.

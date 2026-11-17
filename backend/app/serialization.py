@@ -1,7 +1,7 @@
 """JSON serialization helpers.
 
-Timestamps are stored naive and interpreted as UTC, an assumption that is
-pending verification (see the ``time_basis`` field added by endpoints).
+Timestamps are stored naive and interpreted as UTC. The timezone was verified
+against official FIRMS documentation on 2026-11-17 (see ``docs/decisions.md``).
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-TIME_BASIS = "UTC (assumed; timezone verification pending - dataset-facts.md §2)"
+TIME_BASIS = "UTC (verified via FIRMS documentation 2026-11-17)"
 
 
 def iso_utc(value: datetime) -> str:

@@ -74,6 +74,82 @@ def map_points(
     return database.fetch_all(query_sql, params)
 
 
+def nearby(
+    database: Database, lat: float, lon: float, radius_km: float, limit: int
+) -> dict[str, Any]:
+    """Detections recorded within a geodesic radius of a point.
+
+    A bounding box is used only as a cheap pre-filter; the final test is a
+    haversine distance in metres. ``count`` is the exact number of stored
+    detections in the circle, while ``sample`` is a bounded nearest-first
+    list. Absence of rows is explicitly NOT absence of fire.
+    """
+    from harmonizer.matching.links import haversine_m
+
+    # Degrees per km, generous latitude padding; longitude uses cos(lat) so the
+    # box never excludes a point that the haversine test would accept.
+    from math import cos, radians
+
+    lat_pad = radius_km / 110.574
+    lon_pad = radius_km / max(111.320 * abs(cos(radians(lat))), 1e-6)
+    # Near the poles the longitude band spans the globe.
+    if abs(lat) + lat_pad >= 90:
+        lon_pad = 180.0
+    bbox = (
+        max(-180.0, lon - lon_pad),
+        max(-90.0, lat - lat_pad),
+        min(180.0, lon + lon_pad),
+        min(90.0, lat + lat_pad),
+    )
+    # Bounded scan: the box is small for realistic radii, but cap it so a
+    # pathological request cannot pull the whole table.
+    rows = database.fetch_all(
+        """
+        SELECT observation_id, sensor, lat, lon, datetime_utc, frp_mw
+        FROM observations
+        WHERE lat BETWEEN ? AND ? AND lon BETWEEN ? AND ?
+        LIMIT 100000
+        """,
+        [bbox[1], bbox[3], bbox[0], bbox[2]],
+    )
+    if not rows:
+        return {"count": 0, "sample": [], "last_detected": None, "sensors": {}}
+
+    distances = haversine_m(lat, lon, [float(r["lat"]) for r in rows], [float(r["lon"]) for r in rows])
+    within = [i for i, d in enumerate(distances) if d <= radius_km * 1000.0]
+    matched = [rows[i] for i in within]
+
+    sensors: dict[str, int] = {}
+    for row in matched:
+        key = str(row["sensor"] or "unknown").upper()
+        sensors[key] = sensors.get(key, 0) + 1
+
+    ordered = sorted(
+        zip(within, [float(distances[i]) for i in within]), key=lambda pair: pair[1]
+    )[:limit]
+    sample = []
+    for index, distance_m in ordered:
+        row = rows[index]
+        sample.append(
+            {
+                "observation_id": row["observation_id"],
+                "sensor": row["sensor"],
+                "datetime_utc": row["datetime_utc"],
+                "frp_mw": row["frp_mw"],
+                "distance_km": round(distance_m / 1000.0, 3),
+            }
+        )
+
+    dated = [r for r in matched if r["datetime_utc"] is not None]
+    last = max((r["datetime_utc"] for r in dated), default=None)
+    return {
+        "count": len(matched),
+        "sample": sample,
+        "last_detected": last,
+        "sensors": sensors,
+    }
+
+
 def regions(
     database: Database, query: ObservationQuery, grid: int
 ) -> list[dict[str, Any]]:

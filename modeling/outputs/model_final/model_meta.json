@@ -1,0 +1,30 @@
+{
+  "presence_threshold": 0.3890441587479039,
+  "presence_threshold_uncalibrated": 0.38406932964708357,
+  "precision_ge_0_8_threshold": 0.6600372158606549,
+  "calibration": "isotonic",
+  "presence_model": "hist_gradient_boosting",
+  "count_model": "hist_gradient_boosting",
+  "count_model_is_conditional": false,
+  "frp_model": "log1p (HistGradientBoostingRegressor)",
+  "frp_useful": true,
+  "grid_degrees": 0.05,
+  "trained_on": [
+    "data/processed/cellday_2013.parquet",
+    "data/processed/cellday_2024.parquet",
+    "data/processed/cellday_2025.parquet"
+  ],
+  "split": "year",
+  "test_year": 2024,
+  "validation_year": null,
+  "validation_split": "time_blocks",
+  "refit_on_all_rows": true,
+  "refit_rows": 6955710,
+  "dropped_features": [],
+  "artifact_sha256": {
+    "model_presence.joblib": "ac82cf0a0d07bd7af9e7651000832c84c189c14a0e256ce660c64c591f18e3b1",
+    "model_count.joblib": "a3c062ff5371542b5bd036fa197ea10af7e1dcb1f6820401a38396b825d312f2",
+    "model_frp.joblib": "0fccac7f513b8a063a27de908d811ce181df8b597125d5bc31d1bb9e13f159ed",
+    "calibrator_presence.joblib": "86ebb313719733b2646627f20efb280661c83be82d8f8e7a81c64536253c8da5"
+  }
+}

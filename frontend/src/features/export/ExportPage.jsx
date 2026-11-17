@@ -34,6 +34,20 @@ const EXPORT_ACTIONS = [
     request: () => createExport("harmonized-data", {}),
   },
   {
+    key: "estimates",
+    title: "Harmonized estimates (model)",
+    description:
+      "Full model series: 2013/2024/2025 observed + backcasts, both scales separate. Model-produced, not FIRMS detections.",
+    request: () => createExport("estimate-series", {}),
+  },
+  {
+    key: "estimates-viirs",
+    title: "VIIRS-harmonized estimates",
+    description:
+      "Only the coverage-corrected VIIRS scale of the model series.",
+    request: () => createExport("estimate-series", { scale: "viirs_harmonized" }),
+  },
+  {
     key: "validation",
     title: "Validation report",
     description: "JSON report of the latest validation run, including matched pairs.",

@@ -32,12 +32,26 @@ def app(tmp_path: Path):
             "runs": str(tmp_path / "runs"),
             "uploads": str(tmp_path / "uploads"),
             "exports": str(tmp_path / "exports"),
+            # Estimate sources written by tests live directly in tmp_path.
+            "estimates": str(tmp_path),
         },
         "storage": {"duckdb_path": str(tmp_path / "test.duckdb")},
         "api": {"prefix": "/api/v1", "default_limit": 100, "max_limit": 1000},
         "ingestion": {
             "allowed_extensions": [".csv"],
             "platform_mapping": {"Terra": "Terra", "Aqua": "Aqua", "N": "S-NPP"},
+        },
+        "confidence": {
+            "viirs": {
+                "method": "exact",
+                "source": "FIRMS official l/n/h classes",
+                "mapping": {"l": "low", "n": "nominal", "h": "high"},
+            },
+            "modis": {
+                "method": "ranges",
+                "source": "HEURISTIC bands; FIRMS publishes no numeric cut-offs",
+                "mapping": {"low": [0, 29], "nominal": [30, 79], "high": [80, 100]},
+            },
         },
         "spatial": {"grid_km": None, "storage_crs": "EPSG:4326", "region_grid": 2},
         "exports": {"max_rows": 500000},
