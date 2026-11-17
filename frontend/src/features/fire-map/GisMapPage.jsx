@@ -599,13 +599,21 @@ export default function GisMapPage() {
             ["Recorded detections (10 km)", Number(det.count ?? 0).toLocaleString()],
             ["Last detected (UTC)", String(det.last_detected ?? "—").slice(0, 10)],
           ];
+          const detCount = Number(det.count ?? 0);
           if (est?.available && est.scales?.viirs_harmonized) {
             const s = est.scales.viirs_harmonized;
             rows.push(["Model block (1°)", `${est.entity_id} · ${est.grid_degrees}°`]);
-            rows.push(["Latest estimate", Number(s.latest_value ?? 0).toLocaleString()]);
+            // A monthly estimate of 0 is NOT proof of no fire.
+            rows.push(["Latest estimate", `${Number(s.latest_value ?? 0).toLocaleString()} (monthly model value)`]);
             rows.push(["Estimate period", String(s.latest_period ?? "—").slice(0, 7)]);
           }
-          rows.push(["No record ≠ no fire", "see notes"]);
+          // "No record ≠ no fire" is a one-way caution: it only makes sense
+          // when there is no detection. With detections present, say so instead.
+          rows.push(
+            detCount > 0
+              ? ["Detections", `${detCount.toLocaleString()} recorded — fire was detected`]
+              : ["No record ≠ no fire", "absence of detection ≠ absence of fire"]
+          );
           activePopup.setDOMContent(buildPopupDom(rows));
         } catch (err) {
           if (signal.aborted) return;
