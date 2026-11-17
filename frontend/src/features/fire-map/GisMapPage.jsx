@@ -9,6 +9,7 @@ const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "");
 const GRID_ID = "grid";
 const POINTS_ID = "fires";
 const BACKCAST_ID = "backcast";
+const BACKCAST_POINTS_ID = "backcast-points";
 const BACKCAST_YEAR = 2005;
 const BACKCAST_SCALE = "viirs_harmonized";
 const START_VIEW = { center: [20, 12], zoom: 0.9 };
@@ -337,6 +338,7 @@ export default function GisMapPage() {
       map.addSource(GRID_ID, { type: "geojson", data: EMPTY });
       map.addSource(POINTS_ID, { type: "geojson", data: EMPTY });
       map.addSource(BACKCAST_ID, { type: "geojson", data: EMPTY });
+      map.addSource(BACKCAST_POINTS_ID, { type: "geojson", data: EMPTY });
 
       // الخلايا: اللون حسب عدد الـ detections (مقياس log)
       map.addLayer({
@@ -389,6 +391,27 @@ export default function GisMapPage() {
           "line-color": "rgba(216,180,254,0.85)",
           "line-width": 0.8,
           "line-dasharray": [2, 1],
+        },
+      });
+
+      // نقط عند مركز كل خلية: الحجم حسب قيمة الاستميت (مقياس log).
+      // لون بنفسجي غامق عشان يتميّز عن مربع detectedictions والمربع البنفسجي الخفيف.
+      const BACKCAST_VALUE = ["to-number", ["coalesce", ["get", "value"], 0], 0];
+      map.addLayer({
+        id: "backcast-points",
+        type: "circle",
+        source: BACKCAST_POINTS_ID,
+        paint: {
+          "circle-radius": [
+            "interpolate", ["linear"], ["ln", ["+", BACKCAST_VALUE, 1]],
+            0, 2.5,
+            6, 5,
+            12, 9,
+          ],
+          "circle-color": "rgba(124,58,237,0.95)",
+          "circle-opacity": 0.9,
+          "circle-stroke-color": "rgba(255,255,255,0.85)",
+          "circle-stroke-width": 0.8,
         },
       });
 
@@ -533,10 +556,13 @@ export default function GisMapPage() {
         const detailRows = [];
         const pointFeat = map.queryRenderedFeatures(e.point, { layers: ["fires-points"] })[0];
         // Backcast cells take priority so an estimate is never shown as a detection.
-        const backcastFeat = pointFeat
+        const backcastPointFeat = pointFeat
+          ? null
+          : map.queryRenderedFeatures(e.point, { layers: ["backcast-points"] })[0];
+        const backcastFeat = pointFeat || backcastPointFeat
           ? null
           : map.queryRenderedFeatures(e.point, { layers: ["backcast-fill"] })[0];
-        const gridFeat = pointFeat || backcastFeat
+        const gridFeat = pointFeat || backcastFeat || backcastPointFeat
           ? null
           : map.queryRenderedFeatures(e.point, { layers: ["grid-fill"] })[0];
         if (pointFeat) {
@@ -544,8 +570,8 @@ export default function GisMapPage() {
           detailRows.push(["Sensor", String(p.sensor ?? "—").toUpperCase()]);
           detailRows.push(["FRP", `${Number(p.frp ?? 0).toFixed(1)} MW`]);
           detailRows.push(["Time (UTC)", p.time || "—"]);
-        } else if (backcastFeat) {
-          const p = backcastFeat.properties ?? {};
+        } else if (backcastPointFeat || backcastFeat) {
+          const p = (backcastPointFeat || backcastFeat).properties ?? {};
           detailRows.push(["Layer", "MODEL ESTIMATE — not detections"]);
           detailRows.push(["Year", String(p.year)]);
           detailRows.push(["Backcast value", Number(p.value).toLocaleString()]);
@@ -684,6 +710,7 @@ export default function GisMapPage() {
     backcastControllerRef.current?.abort();
     if (!showBackcast) {
       source.setData(EMPTY);
+      map.getSource(BACKCAST_POINTS_ID)?.setData(EMPTY);
       setBackcastStatus({ state: "idle", cells: 0, message: "" });
       return;
     }
@@ -700,11 +727,21 @@ export default function GisMapPage() {
     })
       .then((payload) => {
         if (controller.signal.aborted) return;
-        const rows = payload?.data ?? [];
-        const features = rows.map((r) => {
+        // backcastCells() already unwraps the API envelope to the data array.
+        const rows = Array.isArray(payload) ? payload : (payload?.data ?? []);
+        const squareFeatures = [];
+        const pointFeatures = [];
+        for (const r of rows) {
           const deg = Number(r.grid_degrees) || 1;
           const half = deg / 2;
-          return {
+          const props = {
+            value: r.value,
+            low: r.low,
+            high: r.high,
+            is_estimate: r.is_estimate,
+            year: BACKCAST_YEAR,
+          };
+          squareFeatures.push({
             type: "Feature",
             geometry: {
               type: "Polygon",
@@ -716,17 +753,18 @@ export default function GisMapPage() {
                 [r.lon - half, r.lat - half],
               ]],
             },
-            properties: {
-              value: r.value,
-              low: r.low,
-              high: r.high,
-              is_estimate: r.is_estimate,
-              year: BACKCAST_YEAR,
-            },
-          };
-        });
-        source.setData({ type: "FeatureCollection", features });
-        setBackcastStatus({ state: "ready", cells: features.length, message: "" });
+            properties: props,
+          });
+          pointFeatures.push({
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [r.lon, r.lat] },
+            properties: props,
+          });
+        }
+        source.setData({ type: "FeatureCollection", features: squareFeatures });
+        const pointSource = map.getSource(BACKCAST_POINTS_ID);
+        pointSource?.setData({ type: "FeatureCollection", features: pointFeatures });
+        setBackcastStatus({ state: "ready", cells: squareFeatures.length, message: "" });
       })
       .catch((err) => {
         if (controller.signal.aborted || err?.code === "aborted") return;
@@ -749,6 +787,7 @@ export default function GisMapPage() {
     const b = showBackcast ? "visible" : "none";
     map.setLayoutProperty("backcast-fill", "visibility", b);
     map.setLayoutProperty("backcast-line", "visibility", b);
+    map.setLayoutProperty("backcast-points", "visibility", b);
   }, [ready, showGrid, showPoints, showModis, showViirs, showBackcast]);
 
   const handleExplore = () => {
