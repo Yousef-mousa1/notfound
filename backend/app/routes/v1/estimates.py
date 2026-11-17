@@ -11,6 +11,7 @@ from flask import Blueprint, current_app
 from ...db import get_db
 from ...errors import ApiError
 from ...schemas.estimates import (
+    BackcastQuery,
     EstimateQuery,
     EstimatesImportRequest,
     ModelRunCreate,
@@ -109,3 +110,14 @@ def monthly_series():
     query = parse_query(EstimateQuery, default_limit=100)
     payload = service.calendar_series(get_db(), query.run_id)
     return ok(jsonable(payload), {"time_basis": TIME_BASIS})
+
+
+@estimates_blueprint.get("/estimates/backcast")
+def backcast_layer():
+    """Model backcast cells on a 1-degree grid for the fire-map layer.
+
+    Read-only and explicitly labelled: these are estimates, never detections.
+    """
+    query = parse_query(BackcastQuery)
+    cells, meta = service.backcast_cells(get_db(), query)
+    return ok(jsonable(cells), meta)

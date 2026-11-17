@@ -24,6 +24,7 @@ from ..errors import ApiError
 from ..serialization import maybe_json
 from ..schemas.estimates import (
     SCALES,
+    BackcastQuery,
     EstimateQuery,
     EstimatesImportRequest,
     ModelRunCreate,
@@ -479,3 +480,78 @@ def calendar_series(database: Database, run_id: str | None = None) -> dict[str, 
             "cannot be directly checked against VIIRS by design.",
         ],
     }
+
+
+def backcast_cells(database: Database, query: BackcastQuery) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Model backcast values on their native 1-degree grid, for the map layer.
+
+    These are estimates, never FIRMS detections. Each row keeps ``is_estimate``
+    and a ``low/high`` heuristic band so the caller can label it honestly.
+    A bounding box restricts the query to the current viewport.
+    """
+    run = _resolve_run(database, None)
+    clauses = ["run_id = ?", "year(period) = ?", "scale = ?"]
+    params: list[Any] = [run["run_id"], query.year, query.scale]
+
+    if query.bbox:
+        try:
+            parts = [float(p.strip()) for p in query.bbox.split(",")]
+        except ValueError as error:
+            raise ApiError("invalid_bbox", "bbox must be min_lon,min_lat,max_lon,max_lat.", 400) from error
+        if len(parts) != 4:
+            raise ApiError("invalid_bbox", "bbox must be min_lon,min_lat,max_lon,max_lat.", 400)
+        min_lon, min_lat, max_lon, max_lat = parts
+        if not (-180 <= min_lon <= max_lon <= 180 and -90 <= min_lat <= max_lat <= 90):
+            raise ApiError("invalid_bbox", "bbox coordinates are out of range.", 400)
+        clauses.append("centroid_lon BETWEEN ? AND ?")
+        clauses.append("centroid_lat BETWEEN ? AND ?")
+        params.extend([min_lon, max_lon, min_lat, max_lat])
+
+    # Sum the monthly values within the year so one grid cell carries one
+    # annual estimate. low/high are summed separately (heuristic bands).
+    sql_text = f"""
+        SELECT
+            centroid_lat AS lat,
+            centroid_lon AS lon,
+            grid_degrees,
+            sum(value) AS value,
+            sum(low) AS low,
+            sum(high) AS high,
+            bool_or(is_estimate) AS is_estimate,
+            count(*) AS n_months
+        FROM estimates
+        WHERE {' AND '.join(clauses)}
+        GROUP BY centroid_lat, centroid_lon, grid_degrees
+        ORDER BY sum(value) DESC
+        LIMIT ?
+    """
+    params.append(query.limit)
+    rows = database.fetch_all(sql_text, params)
+    cells = [
+        {
+            "lat": round(float(r["lat"]), 4),
+            "lon": round(float(r["lon"]), 4),
+            "grid_degrees": r["grid_degrees"],
+            "value": r["value"],
+            "low": r["low"],
+            "high": r["high"],
+            "is_estimate": bool(r["is_estimate"]),
+            "n_months": int(r["n_months"]),
+        }
+        for r in rows
+    ]
+    meta = {
+        "year": query.year,
+        "scale": query.scale,
+        "returned": len(cells),
+        "limit": query.limit,
+        "truncated": len(cells) >= query.limit,
+        "note": (
+            "Model-produced backcast estimates, NOT FIRMS detections. "
+            "VIIRS did not exist before 20 January 2012; these values cannot be "
+            "directly checked against VIIRS by design. low/high are a heuristic "
+            "(+/-35%) band, not a fitted confidence interval."
+        ),
+        "time_basis": "UTC",
+    }
+    return cells, meta

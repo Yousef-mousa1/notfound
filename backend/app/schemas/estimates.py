@@ -60,3 +60,18 @@ class EstimateQuery(PageQuery):
     from_period: date | None = None
     to_period: date | None = None
     is_estimate: bool | None = None
+
+
+class BackcastQuery(BaseModel):
+    """Map layer of model-produced backcast cells for one year.
+
+    Backcasts are estimates, never detections (VIIRS did not exist before
+    2012). A bounding box tightens the query to the current viewport.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    year: int = Field(ge=2000, le=2100)
+    scale: Literal["viirs_harmonized", "modis_raw"] = "viirs_harmonized"
+    bbox: str | None = None  # min_lon,min_lat,max_lon,max_lat
+    limit: int = Field(default=20000, ge=1, le=50000)
