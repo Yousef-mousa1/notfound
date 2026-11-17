@@ -66,7 +66,9 @@ def calendar():
 def estimates_calendar():
     """Monthly model-produced series, separate from raw detections."""
     query = parse_query(EstimateQuery)
-    payload = estimates_service.calendar_series(get_db(), query.run_id)
+    payload = estimates_service.calendar_series(
+        get_db(), query.run_id, country=query.country, iso_a3=query.iso_a3
+    )
     return ok(
         jsonable(payload),
         {

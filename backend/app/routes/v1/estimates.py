@@ -108,7 +108,9 @@ def list_estimates():
 def monthly_series():
     """Monthly estimates summed over all regions, for a dashboard panel."""
     query = parse_query(EstimateQuery, default_limit=100)
-    payload = service.calendar_series(get_db(), query.run_id)
+    payload = service.calendar_series(
+        get_db(), query.run_id, country=query.country, iso_a3=query.iso_a3
+    )
     return ok(jsonable(payload), {"time_basis": TIME_BASIS})
 
 

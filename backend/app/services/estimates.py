@@ -438,36 +438,85 @@ def list_estimates(
     return rows, total, run
 
 
-def calendar_series(database: Database, run_id: str | None = None) -> dict[str, Any]:
-    """Monthly series for a dashboard, summed over all entities.
+def calendar_series(
+    database: Database,
+    run_id: str | None = None,
+    country: str | None = None,
+    iso_a3: str | None = None,
+) -> dict[str, Any]:
+    """Monthly series for a dashboard, summed over entities.
 
     Observed and estimated rows are returned as separate columns rather than
     merged: a backcast is never presented as a measurement.
+
+    ``country`` / ``iso_a3`` optionally restrict the series to model cells whose
+    centroid falls inside that country, using the precomputed ``estimate_country``
+    table. This is a display filter only: a 1-degree cell is assigned by its
+    centre point and is NOT a FIRMS country detection attribution.
     """
     run = _resolve_run(database, run_id)
+
+    # The country list is independent of the active filter so the dropdown
+    # always stays complete, even when one country is selected. Older/smaller
+    # databases (e.g. test fixtures) may not have the precomputed table yet.
+    has_country = bool(
+        database.fetch_scalar(
+            "SELECT count(*) FROM information_schema.tables WHERE table_name = 'estimate_country'",
+            [],
+        )
+    )
+    countries = (
+        database.fetch_all(
+            """
+            SELECT country, iso_a3, count(*) AS cells
+            FROM estimate_country
+            GROUP BY country, iso_a3
+            ORDER BY country
+            """,
+            [],
+        )
+        if has_country
+        else []
+    )
+
+    join = ""
+    extra = ""
+    params: list[Any] = [run["run_id"]]
+    if has_country and (country or iso_a3):
+        join = "JOIN estimate_country ec ON e.entity_id = ec.entity_id"
+        extra = " AND ec.country = ?"
+        params.append(country)
+    elif iso_a3:
+        join = "JOIN estimate_country ec ON e.entity_id = ec.entity_id"
+        extra = " AND ec.iso_a3 = ?"
+        params.append(iso_a3)
+
     rows = database.fetch_all(
-        """
+        f"""
         SELECT
-            period,
-            scale,
-            sum(value) AS value,
-            sum(CASE WHEN is_estimate THEN value ELSE 0 END) AS estimated_value,
-            sum(CASE WHEN NOT is_estimate THEN value ELSE 0 END) AS observed_value,
-            sum(low) AS low,
-            sum(high) AS high,
-            count(*) FILTER (WHERE is_estimate) AS n_estimate_rows,
-            count(*) FILTER (WHERE NOT is_estimate) AS n_observed_rows
-        FROM estimates
-        WHERE run_id = ?
-        GROUP BY period, scale
-        ORDER BY period, scale
+            e.period,
+            e.scale,
+            sum(e.value) AS value,
+            sum(CASE WHEN e.is_estimate THEN e.value ELSE 0 END) AS estimated_value,
+            sum(CASE WHEN NOT e.is_estimate THEN e.value ELSE 0 END) AS observed_value,
+            sum(e.low) AS low,
+            sum(e.high) AS high,
+            count(*) FILTER (WHERE e.is_estimate) AS n_estimate_rows,
+            count(*) FILTER (WHERE NOT e.is_estimate) AS n_observed_rows
+        FROM estimates e
+        {join}
+        WHERE e.run_id = ?{extra}
+        GROUP BY e.period, e.scale
+        ORDER BY e.period, e.scale
         """,
-        [run["run_id"]],
+        params,
     )
     return {
         "run_id": run["run_id"],
         "model_name": run["model_name"],
         "series": rows,
+        "countries": countries,
+        "country_filter": country or iso_a3,
         "notes": [
             "Values are model-produced estimates, not FIRMS detections.",
             "viirs_harmonized includes a coverage correction; modis_raw is uncorrected.",
@@ -478,6 +527,8 @@ def calendar_series(database: Database, run_id: str | None = None) -> dict[str, 
             "2025 contributed to fitting and is not an independent holdout.",
             "VIIRS did not exist before 20 January 2012: the 2005, 2006 and 2012 backcasts "
             "cannot be directly checked against VIIRS by design.",
+            "Country is assigned by each 1-degree model cell's centre point. It is an "
+            "approximate display filter, NOT a FIRMS detection country attribution.",
         ],
     }
 

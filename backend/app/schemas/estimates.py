@@ -60,6 +60,9 @@ class EstimateQuery(PageQuery):
     from_period: date | None = None
     to_period: date | None = None
     is_estimate: bool | None = None
+    # Optional display filter from the precomputed estimate_country table.
+    country: str | None = None
+    iso_a3: str | None = None
 
 
 class BackcastQuery(BaseModel):
