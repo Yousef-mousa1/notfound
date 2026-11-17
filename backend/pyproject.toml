@@ -21,6 +21,9 @@ dev = ["pytest>=8.0", "shapely>=2.0", "certifi"]
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.vercel]
+entrypoint = "vercel_wsgi:application"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src", "."]

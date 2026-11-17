@@ -11,7 +11,11 @@ from harmonizer.store import Database
 def init_database(app: Flask) -> Database:
     """Open the configured DuckDB store and attach it to the app."""
     config = app.config["HARMONIZER"]
-    database = Database(resolve_path(config, "storage", "duckdb_path"))
+    storage = config.get("storage") or {}
+    database = Database(
+        resolve_path(config, "storage", "duckdb_path"),
+        read_only=bool(storage.get("read_only", False)),
+    )
     app.extensions["db"] = database
     return database
 

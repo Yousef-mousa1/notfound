@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "vercel_wsgi.py": {
+      "excludeFiles": ".venv/**,__pycache__/**,**/__pycache__/**,tests/**,tools/**,scripts/**,docs/**,data/interim/**,data/processed/exports/**,data/processed/pyroscope.duckdb"
+    }
+  }
+}

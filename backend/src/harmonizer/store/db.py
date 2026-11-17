@@ -369,13 +369,18 @@ OBSERVATION_INSERT_COLUMNS: tuple[str, ...] = (
 class Database:
     """A small synchronous wrapper around a single DuckDB connection."""
 
-    def __init__(self, path: str | Path) -> None:
+    def __init__(self, path: str | Path, read_only: bool = False) -> None:
         self.path = Path(path)
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.read_only = read_only
         self._lock = threading.RLock()
-        self._conn = duckdb.connect(str(self.path))
+        if read_only:
+            # Immutable snapshot on a read-only host (e.g. Vercel Functions).
+            self._conn = duckdb.connect(str(self.path), read_only=True)
+        else:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self._conn = duckdb.connect(str(self.path))
+            self._create_schema()
         self._conn.execute("SET TimeZone='UTC'")
-        self._create_schema()
 
     def _create_schema(self) -> None:
         with self._lock:

@@ -1,0 +1,73 @@
+# Vercel Functions: bundled read-only snapshot, no nginx layer.
+project:
+  name: PyroScope
+  team: Not Found
+  event: NASA Space Apps Cairo 2026
+paths:
+  raw: dataSets
+  interim: data/interim
+  processed: data/processed
+  runs: data/processed/runs
+  uploads: data/interim/uploads
+  exports: data/processed/exports
+  estimates: ../modeling/outputs
+exports:
+  max_rows: 500000
+  estimate_max_rows: 1000000
+storage:
+  duckdb_path: data/processed/pyroscope_trimmed.duckdb
+  read_only: true
+api:
+  prefix: /api/v1
+  cors_origins:
+  - https://notfound-khaki.vercel.app
+  - http://localhost:5173
+  default_limit: 100
+  max_limit: 1000
+ingestion:
+  allowed_extensions:
+  - .csv
+  platform_mapping:
+    Terra: Terra
+    Aqua: Aqua
+    N: S-NPP
+    '1': NOAA-20
+schema:
+  column_mapping: null
+confidence:
+  viirs:
+    method: exact
+    source: FIRMS official l/n/h classes (FIRMS_VIIRS_Firehotspots.html, 2026-11-17)
+    mapping:
+      l: low
+      n: nominal
+      h: high
+  modis:
+    method: ranges
+    source: HEURISTIC bands; FIRMS defines classes but publishes no numeric cut-offs
+    mapping:
+      low:
+      - 0
+      - 29
+      nominal:
+      - 30
+      - 79
+      high:
+      - 80
+      - 100
+temporal:
+  time_window_h: null
+  timezone: UTC
+spatial:
+  grid_km: null
+  storage_crs: EPSG:4326
+  region_grid: 2
+matching:
+  match_radius_m: null
+  time_window_h: null
+quality:
+  flags:
+  - invalid_ti4
+  - type_nonzero
+  - low_confidence
+  - night_detection
