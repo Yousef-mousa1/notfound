@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import MainLayout from "../components/layout/MainLayout";
+import NotFoundPage from "./NotFoundPage";
 
 // Route-level code splitting: the map (MapLibre) and the charts
 // (recharts) only load when their page is opened.
@@ -32,6 +33,7 @@ const router = createBrowserRouter([
       { path: "harmonized", element: page(<HarmonizedCalendarPage />) },
       { path: "analytics", element: page(<AnalyticsPage />) },
       { path: "export", element: page(<ExportPage />) },
+      { path: "*", element: <NotFoundPage /> },
     ],
   },
 ]);
