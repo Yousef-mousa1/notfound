@@ -22,7 +22,11 @@ const levelClass = (ratio) => {
 };
 
 export default function HarmonizedCalendarPage() {
-  const api = useApi((options) => dashboardEstimatesCalendar(options), []);
+  const [country, setCountry] = useState("");
+  const api = useApi(
+    (options) => dashboardEstimatesCalendar({ ...options, ...(country ? { country } : {}) }),
+    [country]
+  );
   const [scale, setScale] = useState("viirs_harmonized");
   const [selectedYear, setSelectedYear] = useState("all");
 
@@ -75,11 +79,13 @@ export default function HarmonizedCalendarPage() {
           <h2 className="text-2xl font-bold">Harmonized activity calendar</h2>
           <p className="mt-1 text-sm text-(--text-secondary)">
             One model-produced series, 2005–2025. Observed and estimated months are kept separate.
+            {" "}{country ? `Scoped to model cells centred in ${country}.` : "All countries."}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="neutral">run {api.data.run_id}</Badge>
           <Badge variant="neutral">{api.data.model_name}</Badge>
+          <Badge variant="neutral">{country || "World"}</Badge>
         </div>
       </div>
 
@@ -101,6 +107,22 @@ export default function HarmonizedCalendarPage() {
         description="Blue outline = backcast year (no VIIRS observations). Cell colour is relative to the largest month shown."
       >
         <div className="mb-5 flex flex-wrap gap-2">
+          <select
+            value={country}
+            onChange={(event) => {
+              setCountry(event.target.value);
+              setSelectedYear("all");
+            }}
+            title="Model cells are assigned to a country by their 1° centre point — approximate, not a FIRMS detection attribution"
+            className="rounded-lg border border-(--border-color) bg-(--surface) px-3 py-1.5 text-xs"
+          >
+            <option value="">All countries (world)</option>
+            {(api.data?.countries ?? []).map((c) => (
+              <option key={c.iso_a3 ?? c.country} value={c.country}>
+                {c.country} ({Number(c.cells).toLocaleString()} cells)
+              </option>
+            ))}
+          </select>
           {SCALES.map((option) => (
             <button
               key={option.key}
