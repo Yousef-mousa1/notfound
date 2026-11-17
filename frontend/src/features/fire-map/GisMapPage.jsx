@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { backcastCells } from "../../api/endpoints";
 import "./gis.css";
 
 const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "");
 
 const GRID_ID = "grid";
 const POINTS_ID = "fires";
+const BACKCAST_ID = "backcast";
+const BACKCAST_YEAR = 2005;
+const BACKCAST_SCALE = "viirs_harmonized";
 const START_VIEW = { center: [20, 12], zoom: 0.9 };
 const EXPLORE_VIEW = { center: [15, 8], zoom: 2.6, pitch: 25, bearing: -12 };
 const GRID_LIMIT = 20000;
@@ -209,6 +213,7 @@ export default function GisMapPage() {
   const abortRef = useRef(null);
   const debounceRef = useRef(0);
   const cellsRef = useRef([]);
+  const backcastControllerRef = useRef(null);
 
   const [phase, setPhase] = useState("intro");
   const [ready, setReady] = useState(false);
@@ -219,6 +224,9 @@ export default function GisMapPage() {
   const [showLabels, setShowLabels] = useState(true);
   const [showModis, setShowModis] = useState(true);
   const [showViirs, setShowViirs] = useState(true);
+  // 2025 detections stay the default; the 2005 backcast is opt-in.
+  const [showBackcast, setShowBackcast] = useState(false);
+  const [backcastStatus, setBackcastStatus] = useState({ state: "idle", cells: 0, message: "" });
   const [status, setStatus] = useState({
     state: "idle",
     cells: 0,
@@ -328,6 +336,7 @@ export default function GisMapPage() {
     map.on("load", () => {
       map.addSource(GRID_ID, { type: "geojson", data: EMPTY });
       map.addSource(POINTS_ID, { type: "geojson", data: EMPTY });
+      map.addSource(BACKCAST_ID, { type: "geojson", data: EMPTY });
 
       // الخلايا: اللون حسب عدد الـ detections (مقياس log)
       map.addLayer({
@@ -357,6 +366,29 @@ export default function GisMapPage() {
         paint: {
           "line-color": "rgba(255,255,255,0.10)",
           "line-width": 0.5,
+        },
+      });
+
+      // طبقة البريديكت (2005): مربعات 1° بلون بنفسجي مختلف تماماً عن
+      // detectections الحمراء/البرتقالية. موسومة صراحةً إنها estimate.
+      map.addLayer({
+        id: "backcast-fill",
+        type: "fill",
+        source: BACKCAST_ID,
+        paint: {
+          "fill-color": "rgba(167,139,250,0.55)",
+          "fill-opacity": 0.6,
+          "fill-antialias": false,
+        },
+      });
+      map.addLayer({
+        id: "backcast-line",
+        type: "line",
+        source: BACKCAST_ID,
+        paint: {
+          "line-color": "rgba(216,180,254,0.85)",
+          "line-width": 0.8,
+          "line-dasharray": [2, 1],
         },
       });
 
@@ -477,7 +509,7 @@ export default function GisMapPage() {
         });
       }
 
-      for (const layer of ["grid-fill", "fires-points"]) {
+      for (const layer of ["grid-fill", "fires-points", "backcast-fill"]) {
         map.on("mouseenter", layer, () => {
           map.getCanvas().style.cursor = "pointer";
         });
@@ -500,7 +532,11 @@ export default function GisMapPage() {
 
         const detailRows = [];
         const pointFeat = map.queryRenderedFeatures(e.point, { layers: ["fires-points"] })[0];
-        const gridFeat = pointFeat
+        // Backcast cells take priority so an estimate is never shown as a detection.
+        const backcastFeat = pointFeat
+          ? null
+          : map.queryRenderedFeatures(e.point, { layers: ["backcast-fill"] })[0];
+        const gridFeat = pointFeat || backcastFeat
           ? null
           : map.queryRenderedFeatures(e.point, { layers: ["grid-fill"] })[0];
         if (pointFeat) {
@@ -508,6 +544,13 @@ export default function GisMapPage() {
           detailRows.push(["Sensor", String(p.sensor ?? "—").toUpperCase()]);
           detailRows.push(["FRP", `${Number(p.frp ?? 0).toFixed(1)} MW`]);
           detailRows.push(["Time (UTC)", p.time || "—"]);
+        } else if (backcastFeat) {
+          const p = backcastFeat.properties ?? {};
+          detailRows.push(["Layer", "MODEL ESTIMATE — not detections"]);
+          detailRows.push(["Year", String(p.year)]);
+          detailRows.push(["Backcast value", Number(p.value).toLocaleString()]);
+          detailRows.push(["Heuristic band", `${Number(p.low).toLocaleString()} – ${Number(p.high).toLocaleString()}`]);
+          detailRows.push(["Note", "VIIRS absent before 2012; estimate only"]);
         } else if (gridFeat) {
           const p = gridFeat.properties ?? {};
           detailRows.push(["Cell detections", Number(p.n).toLocaleString()]);
@@ -562,6 +605,7 @@ export default function GisMapPage() {
       stopSpin();
       clearTimeout(debounceRef.current);
       abortRef.current?.abort();
+      backcastControllerRef.current?.abort();
       map.remove();
       mapRef.current = null;
     };
@@ -631,6 +675,67 @@ export default function GisMapPage() {
     source.setData({ type: "FeatureCollection", features });
   }, [ready, gridVersion, showModis, showViirs]);
 
+  // تحميل طبقة البريديكت (2005) عند تفعيلها فقط. الداتا estimates مش detections.
+  useEffect(() => {
+    const map = mapRef.current;
+    const source = map?.getSource(BACKCAST_ID);
+    if (!ready || !source) return;
+
+    backcastControllerRef.current?.abort();
+    if (!showBackcast) {
+      source.setData(EMPTY);
+      setBackcastStatus({ state: "idle", cells: 0, message: "" });
+      return;
+    }
+
+    const controller = new AbortController();
+    backcastControllerRef.current = controller;
+    setBackcastStatus({ state: "loading", cells: 0, message: "" });
+
+    backcastCells({
+      year: BACKCAST_YEAR,
+      scale: BACKCAST_SCALE,
+      limit: 20000,
+      signal: controller.signal,
+    })
+      .then((payload) => {
+        if (controller.signal.aborted) return;
+        const rows = payload?.data ?? [];
+        const features = rows.map((r) => {
+          const deg = Number(r.grid_degrees) || 1;
+          const half = deg / 2;
+          return {
+            type: "Feature",
+            geometry: {
+              type: "Polygon",
+              coordinates: [[
+                [r.lon - half, r.lat - half],
+                [r.lon + half, r.lat - half],
+                [r.lon + half, r.lat + half],
+                [r.lon - half, r.lat + half],
+                [r.lon - half, r.lat - half],
+              ]],
+            },
+            properties: {
+              value: r.value,
+              low: r.low,
+              high: r.high,
+              is_estimate: r.is_estimate,
+              year: BACKCAST_YEAR,
+            },
+          };
+        });
+        source.setData({ type: "FeatureCollection", features });
+        setBackcastStatus({ state: "ready", cells: features.length, message: "" });
+      })
+      .catch((err) => {
+        if (controller.signal.aborted || err?.code === "aborted") return;
+        setBackcastStatus({ state: "error", cells: 0, message: err?.message ?? "error" });
+      });
+
+    return () => controller.abort();
+  }, [ready, showBackcast]);
+
   // فلاتر وطبقات
   useEffect(() => {
     const map = mapRef.current;
@@ -641,7 +746,10 @@ export default function GisMapPage() {
     const g = showGrid ? "visible" : "none";
     map.setLayoutProperty("grid-fill", "visibility", g);
     map.setLayoutProperty("grid-line", "visibility", g);
-  }, [ready, showGrid, showPoints, showModis, showViirs]);
+    const b = showBackcast ? "visible" : "none";
+    map.setLayoutProperty("backcast-fill", "visibility", b);
+    map.setLayoutProperty("backcast-line", "visibility", b);
+  }, [ready, showGrid, showPoints, showModis, showViirs, showBackcast]);
 
   const handleExplore = () => {
     const map = mapRef.current;
@@ -767,6 +875,26 @@ export default function GisMapPage() {
         </label>
 
         <div className="gis-sep" />
+
+        <label className="gis-switch" title="Model backcast for 2005 — estimates, not FIRMS detections">
+          <input type="checkbox" checked={showBackcast} onChange={(e) => setShowBackcast(e.target.checked)} />
+          <span className="gis-switch__ui" />
+          <span className="gis-swatch" style={{ background: "#a78bfa" }} />
+          Backcast 2005 (estimate)
+        </label>
+        {showBackcast && (
+          <p className="gis-legend__note" style={{ color: "#c4b5fd" }}>
+            {backcastStatus.state === "loading"
+              ? "Loading backcast…"
+              : backcastStatus.state === "error"
+                ? `Backcast failed: ${backcastStatus.message}`
+                : backcastStatus.state === "ready"
+                  ? `${backcastStatus.cells.toLocaleString()} estimated cells · NOT detections`
+                  : ""}
+          </p>
+        )}
+
+        <div className="gis-sep" />
         <p className="gis-status" data-state={status.state}>{statusText}</p>
         <button type="button" className="gis-link" onClick={handleReplay}>
           ↻ Replay intro
@@ -779,7 +907,10 @@ export default function GisMapPage() {
           <span>Few</span>
           <span>Many</span>
         </div>
-        <p className="gis-legend__note">Cell color = detections per cell (log scale)</p>
+        <p className="gis-legend__note">Warm cells = 2025 detections (log scale)</p>
+        <p className="gis-legend__note" style={{ color: "#c4b5fd" }}>
+          Purple cells = 2005 model backcast (estimate, not detections)
+        </p>
       </aside>
     </div>
   );

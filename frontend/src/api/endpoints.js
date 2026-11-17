@@ -38,6 +38,8 @@ export const analyticsRegions = query(`${PREFIX}/analytics/regions`);
 export const sensorComparison = query(`${PREFIX}/analytics/sensor-comparison`);
 export const observationStatistics = query(`${PREFIX}/observations/statistics`);
 export const observationCountries = query(`${PREFIX}/observations/countries`);
+// Model backcast cells for the fire-map layer (estimates, not detections).
+export const backcastCells = query(`${PREFIX}/estimates/backcast`);
 // ----------------------------------------------------------------- exports
 // Stateless export: the create POST returns the file bytes directly (a ZIP
 // containing the data + metadata). We hand them to the browser so pressing
