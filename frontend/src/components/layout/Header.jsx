@@ -1,12 +1,20 @@
-import { Sun, Moon, Bell } from "lucide-react";
+import { Sun, Moon, Bell, Menu } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 
-export default function Header() {
+export default function Header({ onMenu }) {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-(--border-color) bg-(--surface) px-6">
-      <div>
+    <header className="flex h-16 items-center justify-between border-b border-(--border-color) bg-(--surface) px-4 sm:px-6">
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          aria-label="Open navigation"
+          onClick={onMenu}
+          className="rounded-lg p-2 text-(--text-secondary) hover:bg-(--surface-secondary) lg:hidden"
+        >
+          <Menu size={20} />
+        </button>
         <p className="text-sm font-medium">
           Fire Activity Explorer
         </p>

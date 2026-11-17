@@ -10,6 +10,15 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
 }
 
+/* شاشات صغيرة: ارتفاع أقل عشان الخريطة تفضل ضمن الشاشة. */
+@media (max-width: 640px) {
+  .gis-wrap {
+    height: 62vh;
+    min-height: 380px;
+    border-radius: 12px;
+  }
+}
+
 .gis-stars {
   position: absolute;
   inset: 0;
